@@ -49,7 +49,7 @@ export default function Header() {
           <div className="flex items-center justify-between">
             {/* Name */}
             <button 
-              onClick={() => scrollToSection('hero')} 
+              onClick={scrollToTop} 
               className="text-xl font-black bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-red-700 transition-all duration-300"
             >
               A.M. Tutoring
