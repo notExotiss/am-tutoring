@@ -94,9 +94,10 @@ export default function Services() {
                     // Get actual header height
                     const header = document.querySelector('header')
                     const headerHeight = header ? header.offsetHeight : 80
+                    const margin = 16 // Small margin between navbar and heading
                     
                     const elementPosition = targetElement.getBoundingClientRect().top
-                    const offsetPosition = elementPosition + window.pageYOffset - headerHeight
+                    const offsetPosition = elementPosition + window.pageYOffset - headerHeight - margin
                     
                     window.scrollTo({
                       top: Math.max(0, offsetPosition),
