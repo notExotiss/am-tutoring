@@ -24,7 +24,7 @@ export default function Services() {
   ]
 
   return (
-    <section id="services" className="relative px-6 py-24 overflow-hidden scroll-mt-24">
+    <section id="services" className="relative px-6 pt-12 pb-24 overflow-hidden">
 
       <div className="mx-auto max-w-6xl relative z-10">
         <div className="mb-16 text-center">
@@ -87,9 +87,9 @@ export default function Services() {
                 onClick={() => {
                   const element = document.getElementById('contact')
                   if (element) {
-                    const headerOffset = 60
+                    const headerHeight = 80
                     const elementPosition = element.getBoundingClientRect().top
-                    const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+                    const offsetPosition = elementPosition + window.pageYOffset - headerHeight
                     window.scrollTo({
                       top: offsetPosition,
                       behavior: 'smooth'

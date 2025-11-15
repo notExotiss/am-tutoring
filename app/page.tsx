@@ -10,7 +10,7 @@ import Contact from '@/components/contact'
 
 export default function Home() {
   useEffect(() => {
-    // Scroll to top on page load/reload
+    // Always scroll to top on page load
     window.scrollTo(0, 0)
   }, [])
 

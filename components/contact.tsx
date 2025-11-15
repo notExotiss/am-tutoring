@@ -53,7 +53,7 @@ export default function Contact() {
   }
 
   return (
-    <section id="contact" className="relative border-b border-border px-6 py-24 overflow-hidden scroll-mt-16">
+    <section id="contact" className="relative border-b border-border px-6 py-24 overflow-hidden">
 
       <div className="mx-auto max-w-3xl relative z-10">
         <div className="text-center mb-16">
@@ -171,6 +171,7 @@ export default function Contact() {
                 <h3 className="font-black text-black text-xl mb-2">Location</h3>
                 <p className="text-black/70 font-medium">
                   Edison, New Jersey<br />
+                  <span className="text-sm">John P. Stevens High School</span>
                 </p>
               </div>
             </div>

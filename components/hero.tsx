@@ -13,13 +13,11 @@ export default function Hero() {
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id)
     if (element) {
-      // Use different offsets for different sections
-      let headerOffset = 100
-      if (id === 'credentials' || id === 'contact') {
-        headerOffset = 60
-      }
+      // Account for sticky header height
+      const headerHeight = 80 // Approximate header height
       const elementPosition = element.getBoundingClientRect().top
-      const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+      const offsetPosition = elementPosition + window.pageYOffset - headerHeight
+      
       window.scrollTo({
         top: offsetPosition,
         behavior: 'smooth'
