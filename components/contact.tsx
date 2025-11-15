@@ -53,7 +53,7 @@ export default function Contact() {
   }
 
   return (
-    <section id="contact" className="relative border-b border-border px-6 py-24 overflow-hidden scroll-mt-24">
+    <section id="contact" className="relative border-b border-border px-6 py-24 overflow-hidden scroll-mt-32">
 
       <div className="mx-auto max-w-3xl relative z-10">
         <div className="text-center mb-16">
