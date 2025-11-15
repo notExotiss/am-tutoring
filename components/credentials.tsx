@@ -1,15 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export default function Credentials() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null)
+  const [scrollY, setScrollY] = useState(0)
+  const sectionRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (sectionRef.current) {
+        const rect = sectionRef.current.getBoundingClientRect()
+        const elementScrollY = window.scrollY - rect.top + window.innerHeight
+        setScrollY(elementScrollY)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   return (
-    <section id="credentials" className="relative px-6 py-24 overflow-hidden">
+    <section ref={sectionRef} id="credentials" className="relative px-6 py-24 overflow-hidden">
 
       <div className="mx-auto max-w-5xl relative z-10">
-        <div className="text-center mb-16">
+        <div 
+          className="text-center mb-16"
+          style={{ transform: `translateY(${Math.max(0, scrollY * 0.2)}px)` }}
+        >
           <h2 className="text-4xl md:text-5xl font-black text-black mb-4 relative inline-block">
             Why 
             <span className="text-red-600"> Me?</span>
@@ -25,8 +44,12 @@ export default function Credentials() {
             onMouseEnter={() => setHoveredCard(1)}
             onMouseLeave={() => setHoveredCard(null)}
             className="group relative border-3 border-blue-500 rounded-2xl bg-white p-10 transition-all duration-300 hover:border-blue-600 hover:shadow-2xl hover:scale-110 hover:rotate-1 overflow-hidden shadow-xl"
+            style={{ transform: `translateY(${Math.max(0, scrollY * 0.25)}px)` }}
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 organic-shape -translate-y-1/2 translate-x-1/2"></div>
+            <div 
+              className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 organic-shape -translate-y-1/2 translate-x-1/2"
+              style={{ transform: `translateY(${scrollY * 0.3}px) translateX(${scrollY * 0.1}px)` }}
+            ></div>
             <div className="relative z-10">
               <div className="text-7xl font-black text-blue-600 mb-3">1530</div>
               <div className="font-bold text-black text-xl mt-2">Overall SAT Score</div>
@@ -38,8 +61,15 @@ export default function Credentials() {
             onMouseEnter={() => setHoveredCard(2)}
             onMouseLeave={() => setHoveredCard(null)}
             className="group relative border-3 border-red-500 rounded-2xl bg-white p-10 transition-all duration-300 hover:border-red-600 hover:shadow-2xl hover:scale-110 hover:-rotate-1 overflow-hidden shadow-xl"
+            style={{ transform: `translateY(${Math.max(0, scrollY * 0.3)}px)` }}
           >
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-red-500/20 organic-shape translate-y-1/2 -translate-x-1/2" style={{ borderRadius: '30% 70% 70% 30% / 30% 30% 70% 70%' }}></div>
+            <div 
+              className="absolute bottom-0 left-0 w-32 h-32 bg-red-500/20 organic-shape translate-y-1/2 -translate-x-1/2" 
+              style={{ 
+                borderRadius: '30% 70% 70% 30% / 30% 30% 70% 70%',
+                transform: `translateY(${scrollY * -0.25}px) translateX(${scrollY * -0.15}px)`
+              }}
+            ></div>
             <div className="relative z-10">
               <div className="text-7xl font-black text-red-600 mb-3">800</div>
               <div className="font-bold text-black text-xl mt-2">Math Score</div>
@@ -49,8 +79,17 @@ export default function Credentials() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="group relative border-3 border-blue-500 rounded-xl bg-white p-6 hover:border-blue-600 hover:shadow-xl hover:scale-105 transition-all duration-300 overflow-hidden shadow-lg">
-            <div className="absolute top-[15%] right-[10%] w-24 h-24 bg-red-500/15 organic-shape" style={{ borderRadius: '60% 40% 30% 70% / 60% 30% 70% 40%' }}></div>
+          <div 
+            className="group relative border-3 border-blue-500 rounded-xl bg-white p-6 hover:border-blue-600 hover:shadow-xl hover:scale-105 transition-all duration-300 overflow-hidden shadow-lg"
+            style={{ transform: `translateY(${Math.max(0, scrollY * 0.2)}px)` }}
+          >
+            <div 
+              className="absolute top-[15%] right-[10%] w-24 h-24 bg-red-500/15 organic-shape" 
+              style={{ 
+                borderRadius: '60% 40% 30% 70% / 60% 30% 70% 40%',
+                transform: `translateY(${scrollY * 0.25}px) translateX(${scrollY * 0.1}px)`
+              }}
+            ></div>
             <div className="relative z-10">
               <h4 className="font-black text-black text-xl mb-2">Recent Student Perspective</h4>
               <p className="text-black/70 leading-relaxed text-sm font-medium">The SAT is constantly changing and brings out new challenges for students to overcome. As a recent test taker who’s overcome them, I know exactly how to get you to do the same
@@ -58,8 +97,17 @@ export default function Credentials() {
             </div>
           </div>
 
-          <div className="group relative border-3 border-red-500 rounded-xl bg-white p-6 hover:border-red-600 hover:shadow-xl hover:scale-105 transition-all duration-300 overflow-hidden shadow-lg">
-            <div className="absolute bottom-[20%] left-[8%] w-16 h-16 bg-blue-500/15 organic-shape" style={{ borderRadius: '30% 70% 70% 30% / 30% 30% 70% 70%' }}></div>
+          <div 
+            className="group relative border-3 border-red-500 rounded-xl bg-white p-6 hover:border-red-600 hover:shadow-xl hover:scale-105 transition-all duration-300 overflow-hidden shadow-lg"
+            style={{ transform: `translateY(${Math.max(0, scrollY * 0.25)}px)` }}
+          >
+            <div 
+              className="absolute bottom-[20%] left-[8%] w-16 h-16 bg-blue-500/15 organic-shape" 
+              style={{ 
+                borderRadius: '30% 70% 70% 30% / 30% 30% 70% 70%',
+                transform: `translateY(${scrollY * -0.2}px) translateX(${scrollY * -0.1}px)`
+              }}
+            ></div>
             <div className="relative z-10">
               <h4 className="font-black text-black text-xl mb-2">Personalized Approach</h4>
               <p className="text-black/70 leading-relaxed text-sm font-medium">The SAT is a lot like a puzzle, wherein success doesn&apos;t always rely on knowing the right answer immediately, but on finding the method that works. I&apos;ve spent months studying and developed strategies to procedurally answer each question correctly.
@@ -67,8 +115,17 @@ export default function Credentials() {
             </div>
           </div>
 
-          <div className="group relative border-3 border-blue-500 rounded-xl bg-white p-6 hover:border-blue-600 hover:shadow-xl hover:scale-105 transition-all duration-300 overflow-hidden shadow-lg">
-            <div className="absolute top-[25%] left-[12%] w-20 h-20 bg-red-500/15 organic-shape" style={{ borderRadius: '50% 50% 30% 70% / 50% 30% 70% 50%' }}></div>
+          <div 
+            className="group relative border-3 border-blue-500 rounded-xl bg-white p-6 hover:border-blue-600 hover:shadow-xl hover:scale-105 transition-all duration-300 overflow-hidden shadow-lg"
+            style={{ transform: `translateY(${Math.max(0, scrollY * 0.18)}px)` }}
+          >
+            <div 
+              className="absolute top-[25%] left-[12%] w-20 h-20 bg-red-500/15 organic-shape" 
+              style={{ 
+                borderRadius: '50% 50% 30% 70% / 50% 30% 70% 50%',
+                transform: `translateY(${scrollY * 0.22}px) translateX(${scrollY * 0.12}px)`
+              }}
+            ></div>
             <div className="relative z-10">
               <h4 className="font-black text-black text-xl mb-2">Math Specialization</h4>
               <p className="text-black/70 leading-relaxed text-sm font-medium">When I first started, my math score was a 690, something I wasn’t proud of in the slightest. But constant reps and figuring out how to approach each problem is exactly what I hope to bring to you.
@@ -78,8 +135,17 @@ export default function Credentials() {
           
 
 
-          <div className="group relative border-3 border-blue-500 rounded-xl bg-white p-6 hover:border-blue-600 hover:shadow-xl hover:scale-105 transition-all duration-300 overflow-hidden shadow-lg">
-            <div className="absolute bottom-[12%] right-[15%] w-28 h-28 bg-blue-500/15 organic-shape" style={{ borderRadius: '40% 60% 60% 40% / 60% 40% 60% 40%' }}></div>
+          <div 
+            className="group relative border-3 border-blue-500 rounded-xl bg-white p-6 hover:border-blue-600 hover:shadow-xl hover:scale-105 transition-all duration-300 overflow-hidden shadow-lg"
+            style={{ transform: `translateY(${Math.max(0, scrollY * 0.22)}px)` }}
+          >
+            <div 
+              className="absolute bottom-[12%] right-[15%] w-28 h-28 bg-blue-500/15 organic-shape" 
+              style={{ 
+                borderRadius: '40% 60% 60% 40% / 60% 40% 60% 40%',
+                transform: `translateY(${scrollY * -0.18}px) translateX(${scrollY * 0.15}px)`
+              }}
+            ></div>
             <div className="relative z-10">
               <h4 className="font-black text-black text-xl mb-2">Affordable & Flexible</h4>
               <p className="text-black/70 leading-relaxed text-sm font-medium">Just like you, I’m a high school student, so I know what it’s like to have a jam-packed schedule. What I hope to offer you and show why I work is that I can meet whenever you can at rates that work for you, not against you.
