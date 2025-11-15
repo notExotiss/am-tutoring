@@ -41,10 +41,10 @@ export default function Hero() {
   }
 
   return (
-    <section id="hero" className="relative min-h-screen flex items-center justify-center px-6 pt-8 md:pt-0 pb-64 md:pb-8">
+    <section id="hero" className="relative min-h-screen flex items-start md:items-center justify-center px-6 pt-20 md:pt-0 pb-64 md:pb-8">
 
       <div 
-        className="mx-auto max-w-6xl relative z-10 w-full"
+        className="mx-auto max-w-6xl relative z-10 w-full mt-12 md:mt-0"
         style={{ transform: `translateY(${Math.min(scrollY * 0.3, 200)}px)` }}
       >
         <div className={`mb-6 inline-block rounded-full border-2 border-blue-500 bg-white px-8 py-3 text-sm font-bold text-blue-600 shadow-lg transition-smooth transform ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
