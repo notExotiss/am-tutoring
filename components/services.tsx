@@ -1,26 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 export default function Services() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
-  const [scrollY, setScrollY] = useState(0)
-  const sectionRef = useRef<HTMLElement>(null)
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (sectionRef.current) {
-        const rect = sectionRef.current.getBoundingClientRect()
-        const elementScrollY = window.scrollY - rect.top + window.innerHeight
-        setScrollY(elementScrollY)
-      }
-    }
-
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    handleScroll() // Initial calculation
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
 
   const services = [
     {
@@ -40,13 +24,10 @@ export default function Services() {
   ]
 
   return (
-    <section ref={sectionRef} id="services" className="relative px-6 pt-12 pb-24 overflow-hidden">
+    <section id="services" className="relative px-6 pt-12 pb-24 overflow-hidden">
 
       <div className="mx-auto max-w-6xl relative z-10">
-        <div 
-          className="mb-16 text-center"
-          style={{ transform: `translateY(${Math.max(0, scrollY * 0.2)}px)` }}
-        >
+        <div className="mb-16 text-center">
           <h2 className="text-4xl md:text-5xl font-black text-black mb-4 relative inline-block">
             Services
             <svg className="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 200 12" preserveAspectRatio="none">
@@ -67,21 +48,11 @@ export default function Services() {
                   ? 'border-blue-500 hover:border-blue-600' 
                   : 'border-red-500 hover:border-red-600'
               } ${hoveredIndex === index ? 'scale-110 rotate-1' : 'hover:scale-105'}`}
-              style={{ 
-                transform: `translateY(${Math.max(0, scrollY * (0.15 + index * 0.1))}px) ${hoveredIndex === index ? 'scale(1.1) rotate(1deg)' : ''}`,
-                transition: 'transform 0.3s ease-out'
-              }}
             >
-              {/* Organic shape decoration with parallax */}
-              <div 
-                className={`absolute top-0 right-0 w-40 h-40 organic-shape opacity-15 ${
-                  index === 0 ? 'bg-blue-500' : 'bg-red-500'
-                } -translate-y-1/2 translate-x-1/2 animate-blob`} 
-                style={{ 
-                  animationDelay: `${index * 2}s`,
-                  transform: `translateY(${scrollY * (0.25 + index * 0.05)}px) translateX(${scrollY * (0.1 + index * 0.05)}px)`
-                }}
-              ></div>
+              {/* Organic shape decoration */}
+              <div className={`absolute top-0 right-0 w-40 h-40 organic-shape opacity-15 ${
+                index === 0 ? 'bg-blue-500' : 'bg-red-500'
+              } -translate-y-1/2 translate-x-1/2 animate-blob`} style={{ animationDelay: `${index * 2}s` }}></div>
               
               {/* Icon and Price */}
               <div className="flex items-start justify-between mb-6 relative z-10">

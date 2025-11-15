@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, MapPin, Phone, Calendar } from 'lucide-react'
 
@@ -14,22 +14,6 @@ export default function Contact() {
   const [submitted, setSubmitted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [scrollY, setScrollY] = useState(0)
-  const sectionRef = useRef<HTMLElement>(null)
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (sectionRef.current) {
-        const rect = sectionRef.current.getBoundingClientRect()
-        const elementScrollY = window.scrollY - rect.top + window.innerHeight
-        setScrollY(elementScrollY)
-      }
-    }
-
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    handleScroll()
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -69,13 +53,10 @@ export default function Contact() {
   }
 
   return (
-    <section ref={sectionRef} id="contact" className="relative px-6 py-24 overflow-hidden">
+    <section id="contact" className="relative px-6 py-24 overflow-hidden">
 
       <div className="mx-auto max-w-3xl relative z-10">
-        <div 
-          className="text-center mb-16"
-          style={{ transform: `translateY(${Math.max(0, scrollY * 0.2)}px)` }}
-        >
+        <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-black text-black mb-4 relative inline-block">
             Get in Touch
             <svg className="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 250 12" preserveAspectRatio="none">
@@ -86,14 +67,8 @@ export default function Contact() {
         </div>
 
         {submitted ? (
-          <div 
-            className="border-3 border-blue-500 rounded-2xl bg-white p-10 text-center relative overflow-hidden shadow-xl"
-            style={{ transform: `translateY(${Math.max(0, scrollY * 0.15)}px)` }}
-          >
-            <div 
-              className="absolute top-0 right-0 w-32 h-32 bg-blue-500/15 organic-shape -translate-y-1/2 translate-x-1/2"
-              style={{ transform: `translateY(${scrollY * 0.25}px) translateX(${scrollY * 0.1}px)` }}
-            ></div>
+          <div className="border-3 border-blue-500 rounded-2xl bg-white p-10 text-center relative overflow-hidden shadow-xl">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/15 organic-shape -translate-y-1/2 translate-x-1/2"></div>
             <div className="relative z-10">
               <div className="mb-4 flex justify-center">
                 <CheckCircle className="w-16 h-16 text-blue-600" strokeWidth={2.5} />
@@ -103,17 +78,8 @@ export default function Contact() {
             </div>
           </div>
         ) : (
-          <div 
-            className="border-3 border-blue-500 rounded-2xl bg-white p-8 lg:p-10 relative overflow-hidden shadow-xl"
-            style={{ transform: `translateY(${Math.max(0, scrollY * 0.15)}px)` }}
-          >
-            <div 
-              className="absolute bottom-0 left-0 w-40 h-40 bg-red-500/10 organic-shape translate-y-1/2 -translate-x-1/2" 
-              style={{ 
-                borderRadius: '70% 30% 50% 50% / 30% 50% 50% 70%',
-                transform: `translateY(${scrollY * -0.2}px) translateX(${scrollY * -0.15}px)`
-              }}
-            ></div>
+          <div className="border-3 border-blue-500 rounded-2xl bg-white p-8 lg:p-10 relative overflow-hidden shadow-xl">
+            <div className="absolute bottom-0 left-0 w-40 h-40 bg-red-500/10 organic-shape translate-y-1/2 -translate-x-1/2" style={{ borderRadius: '70% 30% 50% 50% / 30% 50% 50% 70%' }}></div>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="name" className="block text-sm font-black text-black mb-2">
@@ -197,14 +163,8 @@ export default function Contact() {
         )}
 
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div 
-            className="group relative border-3 border-blue-500 rounded-2xl bg-white p-8 hover:border-blue-600 hover:shadow-xl transition-all duration-300 hover:scale-110 hover:rotate-1 overflow-hidden shadow-lg"
-            style={{ transform: `translateY(${Math.max(0, scrollY * 0.2)}px)` }}
-          >
-            <div 
-              className="absolute top-0 right-0 w-24 h-24 bg-blue-500/15 organic-shape -translate-y-1/2 translate-x-1/2"
-              style={{ transform: `translateY(${scrollY * 0.3}px) translateX(${scrollY * 0.1}px)` }}
-            ></div>
+          <div className="group relative border-3 border-blue-500 rounded-2xl bg-white p-8 hover:border-blue-600 hover:shadow-xl transition-all duration-300 hover:scale-110 hover:rotate-1 overflow-hidden shadow-lg">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/15 organic-shape -translate-y-1/2 translate-x-1/2"></div>
             <div className="flex items-start gap-4 relative z-10">
               <MapPin className="w-12 h-12 text-blue-600 flex-shrink-0 mt-1" strokeWidth={2} />
               <div>
@@ -217,17 +177,8 @@ export default function Contact() {
             </div>
           </div>
 
-          <div 
-            className="group relative border-3 border-red-500 rounded-2xl bg-white p-8 hover:border-red-600 hover:shadow-xl transition-all duration-300 hover:scale-110 hover:-rotate-1 overflow-hidden shadow-lg"
-            style={{ transform: `translateY(${Math.max(0, scrollY * 0.25)}px)` }}
-          >
-            <div 
-              className="absolute bottom-0 left-0 w-24 h-24 bg-red-500/15 organic-shape translate-y-1/2 -translate-x-1/2" 
-              style={{ 
-                borderRadius: '30% 70% 70% 30% / 30% 30% 70% 70%',
-                transform: `translateY(${scrollY * -0.25}px) translateX(${scrollY * -0.1}px)`
-              }}
-            ></div>
+          <div className="group relative border-3 border-red-500 rounded-2xl bg-white p-8 hover:border-red-600 hover:shadow-xl transition-all duration-300 hover:scale-110 hover:-rotate-1 overflow-hidden shadow-lg">
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-red-500/15 organic-shape translate-y-1/2 -translate-x-1/2" style={{ borderRadius: '30% 70% 70% 30% / 30% 30% 70% 70%' }}></div>
             <div className="flex items-start gap-4 relative z-10">
               <Phone className="w-12 h-12 text-red-600 flex-shrink-0 mt-1" strokeWidth={2} />
               <div>
@@ -239,14 +190,8 @@ export default function Contact() {
             </div>
           </div>
 
-          <div 
-            className="group relative border-3 border-blue-500 rounded-2xl bg-white p-8 hover:border-blue-600 hover:shadow-xl transition-all duration-300 hover:scale-110 hover:rotate-1 overflow-hidden shadow-lg"
-            style={{ transform: `translateY(${Math.max(0, scrollY * 0.18)}px)` }}
-          >
-            <div 
-              className="absolute top-0 right-0 w-24 h-24 bg-blue-500/15 organic-shape -translate-y-1/2 translate-x-1/2"
-              style={{ transform: `translateY(${scrollY * 0.28}px) translateX(${scrollY * 0.12}px)` }}
-            ></div>
+          <div className="group relative border-3 border-blue-500 rounded-2xl bg-white p-8 hover:border-blue-600 hover:shadow-xl transition-all duration-300 hover:scale-110 hover:rotate-1 overflow-hidden shadow-lg">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/15 organic-shape -translate-y-1/2 translate-x-1/2"></div>
             <div className="flex items-start gap-4 relative z-10">
               <Calendar className="w-12 h-12 text-blue-600 flex-shrink-0 mt-1" strokeWidth={2} />
               <div>
