@@ -24,7 +24,7 @@ export default function Services() {
   ]
 
   return (
-    <section id="services" className="relative px-6 pt-12 pb-24 overflow-hidden" style={{ scrollMarginTop: '5rem' }}>
+    <section id="services" className="relative px-6 pt-12 pb-24 overflow-hidden">
 
       <div className="mx-auto max-w-6xl relative z-10">
         <div className="mb-16 text-center">

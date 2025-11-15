@@ -53,7 +53,7 @@ export default function Contact() {
   }
 
   return (
-    <section id="contact" className="relative px-6 py-24 overflow-hidden" style={{ scrollMarginTop: '5rem' }}>
+    <section id="contact" className="relative px-6 py-24 overflow-hidden">
 
       <div className="mx-auto max-w-3xl relative z-10">
         <div className="text-center mb-16">
