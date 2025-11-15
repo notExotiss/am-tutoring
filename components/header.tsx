@@ -22,7 +22,7 @@ export default function Header() {
       // Use different offsets for different sections
       let headerOffset = 100
       if (id === 'credentials' || id === 'contact') {
-        headerOffset = 180
+        headerOffset = 60
       }
       const elementPosition = element.getBoundingClientRect().top
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset

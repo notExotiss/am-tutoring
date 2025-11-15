@@ -6,7 +6,7 @@ export default function Credentials() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null)
 
   return (
-    <section id="credentials" className="relative border-b border-border px-6 py-24 overflow-hidden scroll-mt-32">
+    <section id="credentials" className="relative border-b border-border px-6 py-24 overflow-hidden scroll-mt-16">
 
       <div className="mx-auto max-w-5xl relative z-10">
         <div className="text-center mb-16">
