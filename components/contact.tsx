@@ -171,7 +171,6 @@ export default function Contact() {
                 <h3 className="font-black text-black text-xl mb-2">Location</h3>
                 <p className="text-black/70 font-medium">
                   Edison, New Jersey<br />
-                  <span className="text-sm">John P. Stevens High School</span>
                 </p>
               </div>
             </div>
