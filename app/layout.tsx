@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
-import { Inter, Pacifico } from 'next/font/google'
+import { Inter, Allura } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import './globals.css'
 
 const inter = Inter({ subsets: ["latin"] });
-const pacifico = Pacifico({ 
+const allura = Allura({ 
   subsets: ["latin"],
-  variable: '--font-pacifico',
+  variable: '--font-allura',
   weight: ['400']
 });
 
@@ -40,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} ${pacifico.variable} antialiased`}>
+      <body className={`${inter.className} ${allura.variable} antialiased`}>
         {children}
         <Analytics />
       </body>

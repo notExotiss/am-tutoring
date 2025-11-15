@@ -43,7 +43,6 @@ export default function Header() {
   }, [])
 
   // Typography loading animation effect
-  
   useEffect(() => {
     const handleLoad = () => {
       isLoadedRef.current = true
@@ -52,13 +51,15 @@ export default function Header() {
 
     // Check if already loaded
     if (document.readyState === 'complete') {
-      isLoadedRef.current = true
-      setIsLoaded(true)
-      return
+      // Small delay to show animation briefly even if already loaded
+      setTimeout(() => {
+        isLoadedRef.current = true
+        setIsLoaded(true)
+      }, 1500)
+    } else {
+      // Listen for load event
+      window.addEventListener('load', handleLoad)
     }
-
-    // Listen for load event
-    window.addEventListener('load', handleLoad)
 
     // Fallback: stop after 3 seconds max
     const timeout = setTimeout(() => {
@@ -66,21 +67,33 @@ export default function Header() {
       setIsLoaded(true)
     }, 3000)
 
-    // Cycle fonts for each word
-    const interval = setInterval(() => {
+    // Separate intervals for each word to cycle independently
+    const intervals: NodeJS.Timeout[] = []
+    
+    // Word 1: "A.M." - cycles every 100ms
+    intervals.push(setInterval(() => {
       if (!isLoadedRef.current) {
-        setFontIndices(prev => 
-          prev.map((idx, i) => {
-            // Each word cycles at slightly different speeds
-            const speed = [1, 1.3, 1.1][i] || 1
-            return (idx + Math.floor(speed)) % FONT_FAMILIES.length
-          })
-        )
+        setFontIndices(prev => {
+          const newIndices = [...prev]
+          newIndices[0] = (newIndices[0] + 1) % FONT_FAMILIES.length
+          return newIndices
+        })
       }
-    }, 80) // Change font every 80ms
+    }, 100))
+
+    // Word 2: "Tutoring" - cycles every 120ms (different speed)
+    intervals.push(setInterval(() => {
+      if (!isLoadedRef.current) {
+        setFontIndices(prev => {
+          const newIndices = [...prev]
+          newIndices[1] = (newIndices[1] + 1) % FONT_FAMILIES.length
+          return newIndices
+        })
+      }
+    }, 120))
 
     return () => {
-      clearInterval(interval)
+      intervals.forEach(interval => clearInterval(interval))
       clearTimeout(timeout)
       window.removeEventListener('load', handleLoad)
     }
@@ -124,7 +137,7 @@ export default function Header() {
               className="text-xl font-bold bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-red-700 transition-all duration-300"
               style={{ 
                 fontFamily: isLoaded 
-                  ? 'var(--font-pacifico), cursive' 
+                  ? 'var(--font-allura), cursive' 
                   : 'inherit'
               }}
             >
