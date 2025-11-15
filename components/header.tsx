@@ -49,28 +49,27 @@ export default function Header() {
       setIsLoaded(true)
     }
 
-    // Check if already loaded
-    if (document.readyState === 'complete') {
-      // Small delay to show animation briefly even if already loaded
-      setTimeout(() => {
+    // Always show animation for at least 2 seconds
+    const minAnimationTime = setTimeout(() => {
+      if (document.readyState === 'complete') {
         isLoadedRef.current = true
         setIsLoaded(true)
-      }, 1500)
-    } else {
-      // Listen for load event
-      window.addEventListener('load', handleLoad)
-    }
+      }
+    }, 2000)
 
-    // Fallback: stop after 3 seconds max
-    const timeout = setTimeout(() => {
+    // Listen for load event
+    window.addEventListener('load', handleLoad)
+
+    // Fallback: stop after 4 seconds max
+    const maxTimeout = setTimeout(() => {
       isLoadedRef.current = true
       setIsLoaded(true)
-    }, 3000)
+    }, 4000)
 
     // Separate intervals for each word to cycle independently
     const intervals: NodeJS.Timeout[] = []
     
-    // Word 1: "A.M." - cycles every 100ms
+    // Word 1: "A.M." - cycles every 80ms
     intervals.push(setInterval(() => {
       if (!isLoadedRef.current) {
         setFontIndices(prev => {
@@ -79,9 +78,9 @@ export default function Header() {
           return newIndices
         })
       }
-    }, 100))
+    }, 80))
 
-    // Word 2: "Tutoring" - cycles every 120ms (different speed)
+    // Word 2: "Tutoring" - cycles every 95ms (different speed)
     intervals.push(setInterval(() => {
       if (!isLoadedRef.current) {
         setFontIndices(prev => {
@@ -90,11 +89,12 @@ export default function Header() {
           return newIndices
         })
       }
-    }, 120))
+    }, 95))
 
     return () => {
       intervals.forEach(interval => clearInterval(interval))
-      clearTimeout(timeout)
+      clearTimeout(minAnimationTime)
+      clearTimeout(maxTimeout)
       window.removeEventListener('load', handleLoad)
     }
   }, [])
@@ -134,7 +134,7 @@ export default function Header() {
             {/* Name */}
             <button 
               onClick={scrollToTop} 
-              className="text-xl font-bold bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-red-700 transition-all duration-300"
+              className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-red-700 transition-all duration-300"
               style={{ 
                 fontFamily: isLoaded 
                   ? 'var(--font-allura), cursive' 
@@ -145,9 +145,9 @@ export default function Header() {
                 'A.M. Tutoring'
               ) : (
                 <>
-                  <span style={{ fontFamily: FONT_FAMILIES[fontIndices[0]] }}>A.M.</span>
+                  <span style={{ fontFamily: `${FONT_FAMILIES[fontIndices[0]]}, sans-serif` }}>A.M.</span>
                   {' '}
-                  <span style={{ fontFamily: FONT_FAMILIES[fontIndices[1]] }}>Tutoring</span>
+                  <span style={{ fontFamily: `${FONT_FAMILIES[fontIndices[1]]}, sans-serif` }}>Tutoring</span>
                 </>
               )}
             </button>
