@@ -17,15 +17,21 @@ export default function Header() {
 
   const scrollToSection = (id: string) => {
     setIsOpen(false)
-    const element = document.getElementById(id)
-    if (element) {
-      // Account for sticky header height
-      const headerHeight = 80 // Approximate header height
-      const elementPosition = element.getBoundingClientRect().top
+    const section = document.getElementById(id)
+    if (section) {
+      // Find the heading (h2) within the section, or use the section itself
+      const heading = section.querySelector('h2') || section.querySelector('h1')
+      const targetElement = heading || section
+      
+      // Get actual header height
+      const header = document.querySelector('header')
+      const headerHeight = header ? header.offsetHeight : 80
+      
+      const elementPosition = targetElement.getBoundingClientRect().top
       const offsetPosition = elementPosition + window.pageYOffset - headerHeight
       
       window.scrollTo({
-        top: offsetPosition,
+        top: Math.max(0, offsetPosition),
         behavior: 'smooth'
       })
     }

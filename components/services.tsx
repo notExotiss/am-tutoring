@@ -85,13 +85,21 @@ export default function Services() {
                     : 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white'
                 }`}
                 onClick={() => {
-                  const element = document.getElementById('contact')
-                  if (element) {
-                    const headerHeight = 80
-                    const elementPosition = element.getBoundingClientRect().top
+                  const section = document.getElementById('contact')
+                  if (section) {
+                    // Find the heading (h2) within the section, or use the section itself
+                    const heading = section.querySelector('h2') || section.querySelector('h1')
+                    const targetElement = heading || section
+                    
+                    // Get actual header height
+                    const header = document.querySelector('header')
+                    const headerHeight = header ? header.offsetHeight : 80
+                    
+                    const elementPosition = targetElement.getBoundingClientRect().top
                     const offsetPosition = elementPosition + window.pageYOffset - headerHeight
+                    
                     window.scrollTo({
-                      top: offsetPosition,
+                      top: Math.max(0, offsetPosition),
                       behavior: 'smooth'
                     })
                   }
