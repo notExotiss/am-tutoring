@@ -19,7 +19,11 @@ export default function Header() {
     setIsOpen(false)
     const element = document.getElementById(id)
     if (element) {
-      const headerOffset = 80
+      // Use different offsets for different sections
+      let headerOffset = 100
+      if (id === 'credentials' || id === 'contact') {
+        headerOffset = 120
+      }
       const elementPosition = element.getBoundingClientRect().top
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset
       window.scrollTo({

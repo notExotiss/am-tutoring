@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import Header from '@/components/header'
 import Hero from '@/components/hero'
 import Credentials from '@/components/credentials'
@@ -8,6 +9,11 @@ import Footer from '@/components/footer'
 import Contact from '@/components/contact'
 
 export default function Home() {
+  useEffect(() => {
+    // Scroll to top on page load/reload
+    window.scrollTo(0, 0)
+  }, [])
+
   return (
     <main className="min-h-screen text-foreground relative">
       {/* Background - colorful and smooth */}

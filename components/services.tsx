@@ -87,7 +87,7 @@ export default function Services() {
                 onClick={() => {
                   const element = document.getElementById('contact')
                   if (element) {
-                    const headerOffset = 80
+                    const headerOffset = 120
                     const elementPosition = element.getBoundingClientRect().top
                     const offsetPosition = elementPosition + window.pageYOffset - headerOffset
                     window.scrollTo({
