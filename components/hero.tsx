@@ -5,9 +5,17 @@ import { useState, useEffect } from 'react'
 
 export default function Hero() {
   const [isVisible, setIsVisible] = useState(false)
+  const [scrollY, setScrollY] = useState(0)
 
   useEffect(() => {
     setIsVisible(true)
+
+    const handleScroll = () => {
+      setScrollY(window.scrollY)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   const scrollToSection = (id: string) => {
@@ -28,7 +36,10 @@ export default function Hero() {
   return (
     <section id="hero" className="relative overflow-hidden min-h-screen flex items-center justify-center px-6">
 
-      <div className="mx-auto max-w-6xl relative z-10 w-full">
+      <div 
+        className="mx-auto max-w-6xl relative z-10 w-full"
+        style={{ transform: `translateY(${Math.min(scrollY * 0.3, 200)}px)` }}
+      >
         <div className={`mb-6 inline-block rounded-full border-2 border-blue-500 bg-white px-8 py-3 text-sm font-bold text-blue-600 shadow-lg transition-smooth transform ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
           <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse"></span>
           1530 SAT
