@@ -1,38 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-
-// List of fonts to cycle through for the cryptography effect
-const FONT_FAMILIES = [
-  'Arial',
-  'Times New Roman',
-  'Courier New',
-  'Georgia',
-  'Verdana',
-  'Trebuchet MS',
-  'Impact',
-  'Comic Sans MS',
-  'Lucida Console',
-  'Palatino',
-  'Garamond',
-  'Bookman',
-  'Avant Garde',
-  'Helvetica',
-  'Tahoma',
-  'Century Gothic',
-  'Franklin Gothic',
-  'Brush Script MT',
-  'Copperplate',
-  'Papyrus',
-]
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [fontIndices, setFontIndices] = useState<number[]>([0, 0, 0])
-  const isLoadedRef = useRef(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -40,63 +13,6 @@ export default function Header() {
     }
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  // Typography loading animation effect
-  useEffect(() => {
-    const handleLoad = () => {
-      isLoadedRef.current = true
-      setIsLoaded(true)
-    }
-
-    // Always show animation for at least 2 seconds
-    const minAnimationTime = setTimeout(() => {
-      if (document.readyState === 'complete') {
-        isLoadedRef.current = true
-        setIsLoaded(true)
-      }
-    }, 2000)
-
-    // Listen for load event
-    window.addEventListener('load', handleLoad)
-
-    // Fallback: stop after 4 seconds max
-    const maxTimeout = setTimeout(() => {
-      isLoadedRef.current = true
-      setIsLoaded(true)
-    }, 4000)
-
-    // Separate intervals for each word to cycle independently
-    const intervals: NodeJS.Timeout[] = []
-    
-    // Word 1: "A.M." - cycles every 80ms
-    intervals.push(setInterval(() => {
-      if (!isLoadedRef.current) {
-        setFontIndices(prev => {
-          const newIndices = [...prev]
-          newIndices[0] = (newIndices[0] + 1) % FONT_FAMILIES.length
-          return newIndices
-        })
-      }
-    }, 80))
-
-    // Word 2: "Tutoring" - cycles every 95ms (different speed)
-    intervals.push(setInterval(() => {
-      if (!isLoadedRef.current) {
-        setFontIndices(prev => {
-          const newIndices = [...prev]
-          newIndices[1] = (newIndices[1] + 1) % FONT_FAMILIES.length
-          return newIndices
-        })
-      }
-    }, 95))
-
-    return () => {
-      intervals.forEach(interval => clearInterval(interval))
-      clearTimeout(minAnimationTime)
-      clearTimeout(maxTimeout)
-      window.removeEventListener('load', handleLoad)
-    }
   }, [])
 
   const scrollToSection = (id: string) => {
@@ -135,21 +51,9 @@ export default function Header() {
             <button 
               onClick={scrollToTop} 
               className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-red-700 transition-all duration-300"
-              style={{ 
-                fontFamily: isLoaded 
-                  ? 'var(--font-allura), cursive' 
-                  : 'inherit'
-              }}
+              style={{ fontFamily: 'var(--font-allura), cursive' }}
             >
-              {isLoaded ? (
-                'A.M. Tutoring'
-              ) : (
-                <>
-                  <span style={{ fontFamily: `${FONT_FAMILIES[fontIndices[0]]}, sans-serif` }}>A.M.</span>
-                  {' '}
-                  <span style={{ fontFamily: `${FONT_FAMILIES[fontIndices[1]]}, sans-serif` }}>Tutoring</span>
-                </>
-              )}
+              A.M. Tutoring
             </button>
 
             {/* Center: Desktop Navigation */}

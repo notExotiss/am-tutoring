@@ -3,7 +3,10 @@ import { Inter, Allura } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import './globals.css'
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: '--font-inter',
+});
 const allura = Allura({ 
   subsets: ["latin"],
   variable: '--font-allura',
@@ -40,7 +43,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} ${allura.variable} antialiased`}>
+      <body className={`${inter.className} ${inter.variable} ${allura.variable} antialiased`}>
         {children}
         <Analytics />
       </body>

@@ -1,11 +1,38 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+
+// List of fonts to cycle through for the cryptography effect
+const FONT_FAMILIES = [
+  'Arial',
+  'Times New Roman',
+  'Courier New',
+  'Georgia',
+  'Verdana',
+  'Trebuchet MS',
+  'Impact',
+  'Comic Sans MS',
+  'Lucida Console',
+  'Palatino',
+  'Garamond',
+  'Bookman',
+  'Avant Garde',
+  'Helvetica',
+  'Tahoma',
+  'Century Gothic',
+  'Franklin Gothic',
+  'Brush Script MT',
+  'Copperplate',
+  'Papyrus',
+]
 
 export default function Hero() {
   const [isVisible, setIsVisible] = useState(false)
   const [scrollY, setScrollY] = useState(0)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [fontIndices, setFontIndices] = useState<number[]>([0, 0, 0, 0, 0, 0])
+  const isLoadedRef = useRef(false)
 
   useEffect(() => {
     setIsVisible(true)
@@ -16,6 +43,107 @@ export default function Hero() {
 
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Typography loading animation effect for hero heading
+  useEffect(() => {
+    const handleLoad = () => {
+      isLoadedRef.current = true
+      setIsLoaded(true)
+    }
+
+    // Always show animation for at least 2 seconds
+    const minAnimationTime = setTimeout(() => {
+      if (document.readyState === 'complete') {
+        isLoadedRef.current = true
+        setIsLoaded(true)
+      }
+    }, 2000)
+
+    // Listen for load event
+    window.addEventListener('load', handleLoad)
+
+    // Fallback: stop after 4 seconds max
+    const maxTimeout = setTimeout(() => {
+      isLoadedRef.current = true
+      setIsLoaded(true)
+    }, 4000)
+
+    // Separate intervals for each word to cycle independently
+    const intervals: NodeJS.Timeout[] = []
+    
+    // Word 1: "Personalized" - cycles every 70ms
+    intervals.push(setInterval(() => {
+      if (!isLoadedRef.current) {
+        setFontIndices(prev => {
+          const newIndices = [...prev]
+          newIndices[0] = (newIndices[0] + 1) % FONT_FAMILIES.length
+          return newIndices
+        })
+      }
+    }, 70))
+
+    // Word 2: "SAT" - cycles every 85ms
+    intervals.push(setInterval(() => {
+      if (!isLoadedRef.current) {
+        setFontIndices(prev => {
+          const newIndices = [...prev]
+          newIndices[1] = (newIndices[1] + 1) % FONT_FAMILIES.length
+          return newIndices
+        })
+      }
+    }, 85))
+
+    // Word 3: "Prep" - cycles every 75ms
+    intervals.push(setInterval(() => {
+      if (!isLoadedRef.current) {
+        setFontIndices(prev => {
+          const newIndices = [...prev]
+          newIndices[2] = (newIndices[2] + 1) % FONT_FAMILIES.length
+          return newIndices
+        })
+      }
+    }, 75))
+
+    // Word 4: "That" - cycles every 90ms
+    intervals.push(setInterval(() => {
+      if (!isLoadedRef.current) {
+        setFontIndices(prev => {
+          const newIndices = [...prev]
+          newIndices[3] = (newIndices[3] + 1) % FONT_FAMILIES.length
+          return newIndices
+        })
+      }
+    }, 90))
+
+    // Word 5: "Actually" - cycles every 80ms
+    intervals.push(setInterval(() => {
+      if (!isLoadedRef.current) {
+        setFontIndices(prev => {
+          const newIndices = [...prev]
+          newIndices[4] = (newIndices[4] + 1) % FONT_FAMILIES.length
+          return newIndices
+        })
+      }
+    }, 80))
+
+    // Word 6: "Works" - cycles every 95ms
+    intervals.push(setInterval(() => {
+      if (!isLoadedRef.current) {
+        setFontIndices(prev => {
+          const newIndices = [...prev]
+          newIndices[5] = (newIndices[5] + 1) % FONT_FAMILIES.length
+          return newIndices
+        })
+      }
+    }, 95))
+
+    return () => {
+      intervals.forEach(interval => clearInterval(interval))
+      clearTimeout(minAnimationTime)
+      clearTimeout(maxTimeout)
+      window.removeEventListener('load', handleLoad)
+    }
   }, [])
 
   const scrollToSection = (id: string) => {
@@ -52,11 +180,36 @@ export default function Hero() {
           1530 SAT
         </div>
 
-        <h1 className={`text-5xl md:text-7xl font-black tracking-tight transition-smooth transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <span className="text-black">Personalized SAT Prep</span>
+        <h1 
+          className={`text-5xl md:text-7xl font-black tracking-tight transition-smooth transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          style={isLoaded ? { fontFamily: 'var(--font-inter), sans-serif' } : {}}
+        >
+          <span className="text-black">
+            {isLoaded ? (
+              'Personalized SAT Prep'
+            ) : (
+              <>
+                <span style={{ fontFamily: `${FONT_FAMILIES[fontIndices[0]]}, sans-serif` }}>Personalized</span>
+                {' '}
+                <span style={{ fontFamily: `${FONT_FAMILIES[fontIndices[1]]}, sans-serif` }}>SAT</span>
+                {' '}
+                <span style={{ fontFamily: `${FONT_FAMILIES[fontIndices[2]]}, sans-serif` }}>Prep</span>
+              </>
+            )}
+          </span>
           <br />
           <span className="relative inline-block">
-            <span className="bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent">That Actually Works</span>
+            {isLoaded ? (
+              <span className="bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent">That Actually Works</span>
+            ) : (
+              <span className="bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent">
+                <span style={{ fontFamily: `${FONT_FAMILIES[fontIndices[3]]}, sans-serif` }}>That</span>
+                {' '}
+                <span style={{ fontFamily: `${FONT_FAMILIES[fontIndices[4]]}, sans-serif` }}>Actually</span>
+                {' '}
+                <span style={{ fontFamily: `${FONT_FAMILIES[fontIndices[5]]}, sans-serif` }}>Works</span>
+              </span>
+            )}
             <svg className="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 400 12" preserveAspectRatio="none">
               <path d="M0,8 Q100,2 200,8 T400,8" stroke="#dc2626" strokeWidth="4" fill="none" strokeLinecap="round" />
             </svg>
