@@ -18,7 +18,15 @@ export default function Header() {
   const scrollToSection = (id: string) => {
     setIsOpen(false)
     const element = document.getElementById(id)
-    element?.scrollIntoView({ behavior: 'smooth' })
+    if (element) {
+      const headerOffset = 80
+      const elementPosition = element.getBoundingClientRect().top
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      })
+    }
   }
 
   const scrollToTop = () => {

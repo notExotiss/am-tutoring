@@ -12,11 +12,19 @@ export default function Hero() {
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id)
-    element?.scrollIntoView({ behavior: 'smooth' })
+    if (element) {
+      const headerOffset = 80
+      const elementPosition = element.getBoundingClientRect().top
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      })
+    }
   }
 
   return (
-    <section id="hero" className="relative overflow-hidden min-h-screen flex items-center px-6 py-12 sm:py-20 pb-8 sm:pb-12">
+    <section id="hero" className="relative overflow-hidden min-h-screen flex items-center justify-center px-6">
 
       <div className="mx-auto max-w-6xl relative z-10 w-full">
         <div className={`mb-6 inline-block rounded-full border-2 border-blue-500 bg-white px-8 py-3 text-sm font-bold text-blue-600 shadow-lg transition-smooth transform ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
