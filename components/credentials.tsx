@@ -12,7 +12,7 @@ export default function Credentials() {
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-black text-black mb-4 relative inline-block">
             Why 
-            <span className="text-red-600"> Me</span>?
+            <span className="text-red-600"> Me?</span>
             <svg className="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 300 12" preserveAspectRatio="none">
               <path d="M0,8 Q75,4 150,8 T300,8" stroke="#2563eb" strokeWidth="4" fill="none" strokeLinecap="round" />
             </svg>
