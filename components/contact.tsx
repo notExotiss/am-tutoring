@@ -63,7 +63,7 @@ export default function Contact() {
               <path d="M0,8 Q62,4 125,8 T250,8" stroke="#dc2626" strokeWidth="4" fill="none" strokeLinecap="round" />
             </svg>
           </h2>
-          <p className="text-lg text-black/70 max-w-2xl mx-auto font-medium">Send me a message to get your journey started.</p>
+          <p className="text-lg text-black/70 max-w-2xl mx-auto font-medium">Send me a message to get your journey started!</p>
         </div>
 
         {submitted ? (
