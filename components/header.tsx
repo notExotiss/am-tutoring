@@ -198,7 +198,7 @@ export default function Header() {
 
           {/* Mobile Menu */}
           <div 
-            className={`absolute left-0 right-0 top-full flex flex-col gap-3 border-b-2 border-black bg-white backdrop-blur-xl px-6 py-4 md:hidden shadow-xl transition-all duration-300 ease-out overflow-hidden ${
+            className={`absolute left-0 right-0 top-full flex flex-col gap-3 bg-white backdrop-blur-xl px-6 py-4 md:hidden shadow-xl transition-all duration-300 ease-out overflow-hidden ${
               isOpen 
                 ? 'max-h-96 opacity-100 translate-y-0' 
                 : 'max-h-0 opacity-0 -translate-y-4 pointer-events-none'

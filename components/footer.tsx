@@ -36,14 +36,14 @@ export default function Footer() {
 
       <div className="mx-auto max-w-6xl relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-1 items-start justify-items-center">
-          <div>
+          <div className="text-center md:text-left">
             <h4 className="font-black text-black text-xl mb-4 border-b-2 border-blue-500 pb-2 inline-block">About</h4>
             <p className="text-sm text-black/70 leading-relaxed font-medium">
               Expert SAT tutoring <br/> by a student, for students.
             </p>
           </div>
 
-          <div>
+          <div className="text-center md:text-left">
             <h4 className="font-black text-black text-xl mb-4 border-b-2 border-red-500 pb-2 inline-block">Quick Links</h4>
             <ul className="space-y-3">
               <li>
@@ -73,7 +73,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          <div>
+          <div className="text-center md:text-left">
             <h4 className="font-black text-black text-xl mb-1 border-b-2 border-black pb-2 inline-block">Contact</h4>
             <p className="text-sm text-black/70 leading-relaxed font-medium">
               <a href="tel:18482090996" className="hover:text-blue-600 transition-colors">(848) 209-0996</a><br />

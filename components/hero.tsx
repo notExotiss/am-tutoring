@@ -41,7 +41,7 @@ export default function Hero() {
   }
 
   return (
-    <section id="hero" className="relative overflow-hidden min-h-screen flex items-center justify-center px-6">
+    <section id="hero" className="relative overflow-hidden min-h-screen flex items-center justify-center px-6 pb-20 sm:pb-8">
 
       <div 
         className="mx-auto max-w-6xl relative z-10 w-full"
