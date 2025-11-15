@@ -182,6 +182,11 @@ html {
   }
 }
 
+/* Universal solution for section spacing - prevents overlap with sticky header */
+section[id] {
+  scroll-margin-top: 5rem;
+}
+
 /* Landscape mobile phones - extra bottom padding for hero section */
 @media (max-width: 767px) and (orientation: landscape) {
   #hero {
