@@ -1,9 +1,14 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Dancing_Script } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import './globals.css'
 
 const inter = Inter({ subsets: ["latin"] });
+const dancingScript = Dancing_Script({ 
+  subsets: ["latin"],
+  variable: '--font-dancing-script',
+  weight: ['400', '500', '600', '700']
+});
 
 export const metadata: Metadata = {
   title: 'A.M. SAT Tutoring',
@@ -35,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>
+      <body className={`${inter.className} ${dancingScript.variable} antialiased`}>
         {children}
         <Analytics />
       </body>

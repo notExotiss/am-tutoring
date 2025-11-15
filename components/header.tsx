@@ -50,7 +50,8 @@ export default function Header() {
             {/* Name */}
             <button 
               onClick={scrollToTop} 
-              className="text-xl font-black bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-red-700 transition-all duration-300"
+              className="text-xl font-bold bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-red-700 transition-all duration-300"
+              style={{ fontFamily: 'var(--font-dancing-script), cursive' }}
             >
               A.M. Tutoring
             </button>
