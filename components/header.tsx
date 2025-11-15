@@ -1,11 +1,38 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
+
+// List of fonts to cycle through for the cryptography effect
+const FONT_FAMILIES = [
+  'Arial',
+  'Times New Roman',
+  'Courier New',
+  'Georgia',
+  'Verdana',
+  'Trebuchet MS',
+  'Impact',
+  'Comic Sans MS',
+  'Lucida Console',
+  'Palatino',
+  'Garamond',
+  'Bookman',
+  'Avant Garde',
+  'Helvetica',
+  'Tahoma',
+  'Century Gothic',
+  'Franklin Gothic',
+  'Brush Script MT',
+  'Copperplate',
+  'Papyrus',
+]
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [fontIndices, setFontIndices] = useState<number[]>([0, 0, 0])
+  const isLoadedRef = useRef(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -13,6 +40,50 @@ export default function Header() {
     }
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Typography loading animation effect
+  
+  useEffect(() => {
+    const handleLoad = () => {
+      isLoadedRef.current = true
+      setIsLoaded(true)
+    }
+
+    // Check if already loaded
+    if (document.readyState === 'complete') {
+      isLoadedRef.current = true
+      setIsLoaded(true)
+      return
+    }
+
+    // Listen for load event
+    window.addEventListener('load', handleLoad)
+
+    // Fallback: stop after 3 seconds max
+    const timeout = setTimeout(() => {
+      isLoadedRef.current = true
+      setIsLoaded(true)
+    }, 3000)
+
+    // Cycle fonts for each word
+    const interval = setInterval(() => {
+      if (!isLoadedRef.current) {
+        setFontIndices(prev => 
+          prev.map((idx, i) => {
+            // Each word cycles at slightly different speeds
+            const speed = [1, 1.3, 1.1][i] || 1
+            return (idx + Math.floor(speed)) % FONT_FAMILIES.length
+          })
+        )
+      }
+    }, 80) // Change font every 80ms
+
+    return () => {
+      clearInterval(interval)
+      clearTimeout(timeout)
+      window.removeEventListener('load', handleLoad)
+    }
   }, [])
 
   const scrollToSection = (id: string) => {
@@ -51,9 +122,21 @@ export default function Header() {
             <button 
               onClick={scrollToTop} 
               className="text-xl font-bold bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-red-700 transition-all duration-300"
-              style={{ fontFamily: 'var(--font-barrio), cursive' }}
+              style={{ 
+                fontFamily: isLoaded 
+                  ? 'var(--font-pacifico), cursive' 
+                  : 'inherit'
+              }}
             >
-              A.M. Tutoring
+              {isLoaded ? (
+                'A.M. Tutoring'
+              ) : (
+                <>
+                  <span style={{ fontFamily: FONT_FAMILIES[fontIndices[0]] }}>A.M.</span>
+                  {' '}
+                  <span style={{ fontFamily: FONT_FAMILIES[fontIndices[1]] }}>Tutoring</span>
+                </>
+              )}
             </button>
 
             {/* Center: Desktop Navigation */}
