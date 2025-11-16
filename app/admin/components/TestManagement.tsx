@@ -410,11 +410,10 @@ export default function TestManagement() {
       questionType: 'multiple-choice',
     }
     const newQuestions = [...editingTest.questions, newQuestion]
-    setEditingTest({
-      ...editingTest,
-      questions: newQuestions,
-    })
-    setCurrentQuestionIndex(newQuestions.length - 1)
+    const newIndex = newQuestions.length - 1
+    // Update both states together
+    setEditingTest({ ...editingTest, questions: newQuestions })
+    setCurrentQuestionIndex(newIndex)
   }
 
   const toggleStudent = (studentId: string) => {
@@ -750,8 +749,9 @@ export default function TestManagement() {
                           return (
                             <button
                               key={idx}
-                              onClick={() => {
+                              onClick={async () => {
                                 if (question && globalIndex >= 0) {
+                                  // Question exists, select it
                                   setCurrentQuestionIndex(globalIndex)
                                 } else {
                                   // Create new question for this position
@@ -768,6 +768,7 @@ export default function TestManagement() {
                                   }
                                   const allQuestions = [...editingTest.questions, newQuestion]
                                   const newIndex = allQuestions.length - 1
+                                  // Update both states together
                                   setEditingTest({ ...editingTest, questions: allQuestions })
                                   setCurrentQuestionIndex(newIndex)
                                 }
@@ -807,7 +808,7 @@ export default function TestManagement() {
                           if (currentQ && currentQ.section === moduleSection && currentQ.module === moduleNumber) {
                             return (
                               <TestQuestionEditor
-                                key={currentQ.id}
+                                key={`${currentQ.id}-${currentQuestionIndex}-${module}`}
                                 question={currentQ}
                                 onUpdate={(updated) => updateQuestion(currentQ.id, updated)}
                                 onDelete={() => deleteQuestion(currentQ.id)}

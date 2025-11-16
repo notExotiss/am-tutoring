@@ -784,9 +784,18 @@ export default function TakeTestPage() {
                 <li>Do not speak in the test room; outside the test room, do not discuss the exam with anyone.</li>
               </ol>
             </div>
-            {timeRemaining <= 0 && (
-              <Button 
-                onClick={() => {
+            <Button 
+              onClick={() => {
+                if (timeRemaining > 0) {
+                  if (confirm('Are you sure you want to skip the break? You still have time remaining.')) {
+                    setTestState('math-m1')
+                    const mathM1Time = test?.mathModule1Time || 35
+                    if (test?.timeLimitEnabled) setTimeRemaining(mathM1Time * 60)
+                    setCurrentQuestionIndex(0)
+                    setIsPaused(false)
+                    setShowReviewPage(false)
+                  }
+                } else {
                   if (confirm('Are you sure you want to resume testing?')) {
                     setTestState('math-m1')
                     const mathM1Time = test?.mathModule1Time || 35
@@ -795,12 +804,12 @@ export default function TakeTestPage() {
                     setIsPaused(false)
                     setShowReviewPage(false)
                   }
-                }}
-                className="bg-[#ffd23f] hover:bg-[#ffc800] text-black px-8 py-3 text-lg font-semibold rounded-lg"
-              >
-                Resume Testing Now
-              </Button>
-            )}
+                }
+              }}
+              className="bg-[#ffd23f] hover:bg-[#ffc800] text-black px-8 py-3 text-lg font-semibold rounded-lg"
+            >
+              {timeRemaining > 0 ? 'Skip Break' : 'Resume Testing Now'}
+            </Button>
           </div>
         </div>
         
