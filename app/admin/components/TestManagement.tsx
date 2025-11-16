@@ -182,6 +182,31 @@ export default function TestManagement() {
     setCurrentQuestionIndex(firstEngM1Index >= 0 ? firstEngM1Index : 0)
   }
 
+  // Auto-select first question in active module when module changes or questions change
+  useEffect(() => {
+    if (!editingTest || !showForm) return
+    
+    const moduleSection = activeModule.startsWith('english') ? 'english' : 'math'
+    const moduleNumber = activeModule === 'english-m1' || activeModule === 'math-m1' ? 1 : 2
+    
+    // Check if current question is in the active module
+    if (currentQuestionIndex >= 0 && currentQuestionIndex < editingTest.questions.length) {
+      const currentQ = editingTest.questions[currentQuestionIndex]
+      if (currentQ && currentQ.section === moduleSection && currentQ.module === moduleNumber) {
+        // Current question is in the active module, keep it
+        return
+      }
+    }
+    
+    // Find first question in active module
+    const firstQuestionIndex = editingTest.questions.findIndex(q => 
+      q.section === moduleSection && q.module === moduleNumber
+    )
+    if (firstQuestionIndex >= 0) {
+      setCurrentQuestionIndex(firstQuestionIndex)
+    }
+  }, [activeModule, editingTest, showForm]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleViewSubmissions = async (test: Test) => {
     if (!db || !test.id) return
     
@@ -707,24 +732,6 @@ export default function TestManagement() {
               <Tabs value={activeModule} onValueChange={(value: string) => {
                 const newModule = value as 'english-m1' | 'english-m2' | 'math-m1' | 'math-m2'
                 setActiveModule(newModule)
-                // Find first question in the new module, or keep current if it's in the new module
-                const moduleSection = newModule.startsWith('english') ? 'english' : 'math'
-                const moduleNumber = newModule === 'english-m1' || newModule === 'math-m1' ? 1 : 2
-                const currentQ = editingTest.questions[currentQuestionIndex]
-                if (currentQ && currentQ.section === moduleSection && currentQ.module === moduleNumber) {
-                  // Current question is in the new module, keep it
-                  // Don't change currentQuestionIndex
-                } else {
-                  // Find first question in new module
-                  const firstQuestionIndex = editingTest.questions.findIndex(q => 
-                    q.section === moduleSection && q.module === moduleNumber
-                  )
-                  if (firstQuestionIndex >= 0) {
-                    setCurrentQuestionIndex(firstQuestionIndex)
-                  } else {
-                    setCurrentQuestionIndex(0)
-                  }
-                }
               }}>
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="english-m1">English Module 1</TabsTrigger>
@@ -825,13 +832,6 @@ export default function TestManagement() {
                           if (firstIndex >= 0) {
                             questionToShow = editingTest.questions[firstIndex]
                             questionIndex = firstIndex
-                            // Auto-select the first question if none is selected in this module
-                            if (currentQuestionIndex < 0 || 
-                                !editingTest.questions[currentQuestionIndex] ||
-                                editingTest.questions[currentQuestionIndex].section !== moduleSection ||
-                                editingTest.questions[currentQuestionIndex].module !== moduleNumber) {
-                              setCurrentQuestionIndex(firstIndex)
-                            }
                           }
                         }
                         
