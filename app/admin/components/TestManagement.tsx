@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { collection, doc, getDocs, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
@@ -182,9 +182,16 @@ export default function TestManagement() {
     setCurrentQuestionIndex(firstEngM1Index >= 0 ? firstEngM1Index : 0)
   }
 
-  // Auto-select first question in active module when module changes or questions change
+  // Auto-select first question in active module when module changes (but not when questions change)
+  const prevActiveModule = useRef(activeModule)
   useEffect(() => {
     if (!editingTest || !showForm) return
+    
+    // Only auto-select if the module actually changed
+    if (prevActiveModule.current === activeModule) {
+      return
+    }
+    prevActiveModule.current = activeModule
     
     const moduleSection = activeModule.startsWith('english') ? 'english' : 'math'
     const moduleNumber = activeModule === 'english-m1' || activeModule === 'math-m1' ? 1 : 2
@@ -205,7 +212,7 @@ export default function TestManagement() {
     if (firstQuestionIndex >= 0) {
       setCurrentQuestionIndex(firstQuestionIndex)
     }
-  }, [activeModule, editingTest, showForm]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeModule, showForm, editingTest]) // Include editingTest but use ref to prevent unnecessary runs
 
   const handleViewSubmissions = async (test: Test) => {
     if (!db || !test.id) return
@@ -761,7 +768,13 @@ export default function TestManagement() {
                               key={idx}
                               onClick={async () => {
                                 if (question && globalIndex >= 0) {
-                                  // Question exists, select it
+                                  // Question exists, select it and ensure we're on the correct module tab
+                                  const questionModule = question.section === 'english' 
+                                    ? (question.module === 1 ? 'english-m1' : 'english-m2')
+                                    : (question.module === 1 ? 'math-m1' : 'math-m2')
+                                  if (activeModule !== questionModule) {
+                                    setActiveModule(questionModule)
+                                  }
                                   setCurrentQuestionIndex(globalIndex)
                                 } else {
                                   // Create new question for this position
@@ -811,43 +824,40 @@ export default function TestManagement() {
                         const moduleSection = module.split('-')[0]
                         const moduleNumber = parseInt(module.split('-')[1])
                         
-                        // Get the first question in this module if current question is not in this module
-                        let questionToShow = null
-                        let questionIndex = -1
-                        
                         // Check if currentQuestionIndex is valid and question exists
                         if (currentQuestionIndex >= 0 && currentQuestionIndex < editingTest.questions.length) {
                           const currentQ = editingTest.questions[currentQuestionIndex]
                           // Show editor if current question is in this module
                           if (currentQ && currentQ.section === moduleSection && currentQ.module === moduleNumber) {
-                            questionToShow = currentQ
-                            questionIndex = currentQuestionIndex
+                            return (
+                              <TestQuestionEditor
+                                key={`${currentQ.id}-${currentQuestionIndex}-${module}`}
+                                question={currentQ}
+                                onUpdate={(updated) => updateQuestion(currentQ.id, updated)}
+                                onDelete={() => deleteQuestion(currentQ.id)}
+                              />
+                            )
                           }
                         }
                         
-                        // If no question in this module is selected, show the first question in this module
-                        if (!questionToShow && moduleQuestions.length > 0) {
+                        // If no question in this module is selected, show the first question in this module (only if no question is selected at all)
+                        if (currentQuestionIndex < 0 && moduleQuestions.length > 0) {
                           const firstQuestionInModule = moduleQuestions[0]
                           const firstIndex = editingTest.questions.findIndex(q => q.id === firstQuestionInModule.id)
                           if (firstIndex >= 0) {
-                            questionToShow = editingTest.questions[firstIndex]
-                            questionIndex = firstIndex
+                            const firstQ = editingTest.questions[firstIndex]
+                            return (
+                              <TestQuestionEditor
+                                key={`${firstQ.id}-${firstIndex}-${module}`}
+                                question={firstQ}
+                                onUpdate={(updated) => updateQuestion(firstQ.id, updated)}
+                                onDelete={() => deleteQuestion(firstQ.id)}
+                              />
+                            )
                           }
                         }
                         
-                        // Show editor if we have a question to show
-                        if (questionToShow) {
-                          return (
-                            <TestQuestionEditor
-                              key={`${questionToShow.id}-${questionIndex}-${module}`}
-                              question={questionToShow}
-                              onUpdate={(updated) => updateQuestion(questionToShow!.id, updated)}
-                              onDelete={() => deleteQuestion(questionToShow!.id)}
-                            />
-                          )
-                        }
-                        
-                        // If no questions exist in this module, show empty state
+                        // If no questions exist in this module or no question is selected, show empty state
                         return (
                           <div className="text-center py-12 text-gray-500">
                             <p>Click on a question number above to create or edit a question.</p>
