@@ -91,36 +91,34 @@ export default function StudentDashboard() {
         return
       }
       setUser(currentUser)
-      await loadStudentData(currentUser.email || '')
+      await loadStudentData(currentUser.uid)
     })
 
     return () => unsubscribe()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
-  const loadStudentData = async (email: string) => {
-    if (!db || !email) {
+  const loadStudentData = async (userId: string) => {
+    if (!db || !userId) {
       setLoading(false)
       return
     }
 
     try {
-      // Find student by email
-      const studentsRef = collection(db, 'students')
-      const q = query(studentsRef, where('email', '==', email))
-      const querySnapshot = await getDocs(q)
-
-      if (querySnapshot.empty) {
+      // Find student by UID (more reliable than email)
+      const studentDoc = await getDoc(doc(db, 'students', userId))
+      
+      if (!studentDoc.exists()) {
         toast({
           title: 'Student Not Found',
-          description: 'No student record found for your email. Please contact your tutor.',
+          description: 'No student record found. Please complete onboarding.',
           variant: 'destructive',
         })
+        router.push('/sign-in')
         setLoading(false)
         return
       }
 
-      const studentDoc = querySnapshot.docs[0]
       const data = studentDoc.data()
       
       setStudentData({
@@ -144,10 +142,10 @@ export default function StudentDashboard() {
       })
 
       // Load assignments
-      await loadAssignments(studentDoc.id)
+      await loadAssignments(userId)
       
       // Load tests
-      await loadTests(studentDoc.id)
+      await loadTests(userId)
 
       setLoading(false)
     } catch (error) {
@@ -367,9 +365,20 @@ export default function StudentDashboard() {
     if (!auth) return
     try {
       await signOut(auth)
+      // Clear local state
+      setUser(null)
+      setStudentData(null)
+      setAssignments([])
+      setTests([])
+      // Redirect to sign-in
       router.push('/sign-in')
     } catch (error) {
       console.error('Error signing out:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to sign out. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 

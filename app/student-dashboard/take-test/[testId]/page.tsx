@@ -67,6 +67,8 @@ export default function TakeTestPage() {
   const [dividerPosition, setDividerPosition] = useState(50) // Percentage
   const [isDraggingDivider, setIsDraggingDivider] = useState(false)
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Set<string>>(new Set())
+  const [showCrossOutOptions, setShowCrossOutOptions] = useState(false)
+  const [highlightToRemove, setHighlightToRemove] = useState<{questionId: string, highlightId: string} | null>(null)
   const [crossedOutOptions, setCrossedOutOptions] = useState<Record<string, Set<number>>>({})
   const [openEndedAnswers, setOpenEndedAnswers] = useState<Record<string, string>>({})
   const [highlights, setHighlights] = useState<Record<string, Array<{start: number, end: number, id: string}>>>({})
@@ -395,7 +397,17 @@ export default function TakeTestPage() {
       let total = test.questions.length
       test.questions.forEach(question => {
         if (question.questionType === 'open-ended') {
-          // For open-ended, we'd need to check manually
+          // Compare student answer with correct answer (normalize for comparison)
+          const studentAnswer = openEndedAnswers[question.id]?.trim() || ''
+          const correctAnswer = String(question.correctAnswer || '').trim()
+          if (studentAnswer && correctAnswer) {
+            // Normalize answers for comparison (handle fractions, decimals, etc.)
+            const normalizedStudent = studentAnswer.replace(/\s+/g, '')
+            const normalizedCorrect = correctAnswer.replace(/\s+/g, '')
+            if (normalizedStudent === normalizedCorrect) {
+              correct++
+            }
+          }
         } else {
           if (answers[question.id] === question.correctAnswer) {
             correct++
@@ -566,11 +578,22 @@ export default function TakeTestPage() {
         const mark = document.createElement('mark')
         mark.style.backgroundColor = '#fef0b1'
         mark.style.cursor = 'pointer'
+        mark.style.position = 'relative'
         mark.setAttribute('data-highlight-id', highlight.id)
         mark.setAttribute('data-question-id', questionId)
+        mark.onmouseenter = (e) => {
+          const target = e.target as HTMLElement
+          if (target.tagName === 'MARK') {
+            setHighlightToRemove({ questionId, highlightId: highlight.id })
+          }
+        }
+        mark.onmouseleave = () => {
+          setHighlightToRemove(null)
+        }
         mark.onclick = (e) => {
           e.stopPropagation()
           removeHighlight(questionId, highlight.id)
+          setHighlightToRemove(null)
         }
         
         try {
@@ -837,15 +860,21 @@ export default function TakeTestPage() {
       {/* Top Header - Bluebook Style - EXACT MATCH */}
       <header className="px-6 py-3 flex items-center justify-between relative" style={{ backgroundColor: '#eaedfc' }}>
         {/* Dashed border below header */}
-        <div className="absolute bottom-0 left-0 right-0 h-px" style={{ 
-          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 8px, transparent 8px, transparent 16px)',
-          height: '1px'
+        <div className="absolute bottom-0 left-0 right-0" style={{ 
+          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 48px)',
+          height: '3px'
         }}></div>
         {/* Left: Section Title */}
         <div className="flex items-center gap-4">
           <div>
             <h2 className="text-sm font-semibold leading-tight text-gray-900">
-              {isEnglish ? 'Section 1: Reading and Writing' : 'Section 2: Math'}
+              {(() => {
+                if (testState === 'english-m1') return 'Section 1, Module 1: Reading and Writing'
+                if (testState === 'english-m2') return 'Section 1, Module 2: Reading and Writing'
+                if (testState === 'math-m1') return 'Section 2, Module 1: Math'
+                if (testState === 'math-m2') return 'Section 2, Module 2: Math'
+                return isEnglish ? 'Section 1: Reading and Writing' : 'Section 2: Math'
+              })()}
             </h2>
             <button
               onClick={() => setShowDirections(!showDirections)}
@@ -1000,19 +1029,57 @@ export default function TakeTestPage() {
               className="overflow-y-auto p-6 border-r"
               style={{ width: `${dividerPosition}%` }}
             >
-              <div 
-                className="prose max-w-none"
-                data-question-id={currentQuestion.id}
-                style={{ 
-                  fontFamily: 'var(--font-noto-serif), serif',
-                  userSelect: highlightMode ? 'text' : 'auto',
-                  cursor: highlightMode ? 'text' : 'default'
-                }}
-                onMouseUp={() => handleTextSelection(currentQuestion.id)}
-                dangerouslySetInnerHTML={{ 
-                  __html: renderPassageWithHighlights(currentQuestion.readingPassage || '', currentQuestion.id)
-                }}
-              />
+              {/* Question Image - Above reading passage */}
+              {currentQuestion.questionImage && (
+                <div className="mb-6">
+                  <img
+                    src={currentQuestion.questionImage}
+                    alt="Question"
+                    className="max-w-full max-h-[400px] w-auto h-auto rounded object-contain"
+                    style={{ 
+                      maxWidth: '100%',
+                      height: 'auto',
+                      display: 'block'
+                    }}
+                  />
+                </div>
+              )}
+              <div className="relative">
+                <div 
+                  className="prose max-w-none"
+                  data-question-id={currentQuestion.id}
+                  style={{ 
+                    fontFamily: 'var(--font-noto-serif), serif',
+                    userSelect: highlightMode ? 'text' : 'auto',
+                    cursor: highlightMode ? 'text' : 'default'
+                  }}
+                  onMouseUp={() => handleTextSelection(currentQuestion.id)}
+                  dangerouslySetInnerHTML={{ 
+                    __html: renderPassageWithHighlights(currentQuestion.readingPassage || '', currentQuestion.id)
+                  }}
+                />
+                {/* Highlight removal popup */}
+                {highlightToRemove && highlightToRemove.questionId === currentQuestion.id && (
+                  <div 
+                    className="absolute bg-white border border-gray-300 rounded shadow-lg p-2 z-50"
+                    style={{
+                      top: '-40px',
+                      left: '50%',
+                      transform: 'translateX(-50%)'
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        removeHighlight(highlightToRemove.questionId, highlightToRemove.highlightId)
+                        setHighlightToRemove(null)
+                      }}
+                      className="text-xs text-red-600 hover:text-red-800 px-2 py-1"
+                    >
+                      Remove Highlight
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             
             {/* Resizable Divider */}
@@ -1029,7 +1096,7 @@ export default function TakeTestPage() {
         )}
 
         {isMath && isOpenEnded && (
-          <div className="w-80 overflow-y-auto p-6 border-r bg-gray-50">
+          <div className="w-1/2 overflow-y-auto p-6 border-r bg-gray-50" style={{ width: '50%' }}>
             <h3 className="font-semibold mb-4">Student-produced response directions</h3>
             <p className="text-sm mb-3">For <strong>student-produced response questions</strong>, solve each problem and enter your answer as described below.</p>
             <ul className="text-sm space-y-2 mb-6">
@@ -1083,8 +1150,13 @@ export default function TakeTestPage() {
 
         {/* Question Area */}
         <div 
-          className="flex-1 overflow-y-auto p-6"
-          style={isEnglish && currentQuestion?.readingPassage ? {} : { width: '100%' }}
+          className={`overflow-y-auto p-6 ${
+            isMath && isOpenEnded ? 'w-1/2' : 
+            isMath && !isOpenEnded ? 'flex-1' : 
+            isEnglish && currentQuestion?.readingPassage ? 'flex-1' : 
+            'w-full'
+          }`}
+          style={isMath && !isOpenEnded && showCalculator ? { marginRight: '850px', maxWidth: 'calc(100% - 850px)' } : {}}
         >
           {!currentQuestion ? (
             <div className="text-center py-12">
@@ -1097,16 +1169,9 @@ export default function TakeTestPage() {
                 <div className="bg-black text-white w-10 h-10 flex items-center justify-center font-bold text-lg flex-shrink-0">
                   {currentQuestionIndex + 1}
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 cursor-pointer"
-                  />
-                  <span className="text-sm">Mark for Review</span>
-                </label>
                 <button
                   onClick={() => toggleBookmark(currentQuestion.id)}
-                  className="p-1 hover:bg-gray-100 rounded ml-auto"
+                  className="p-1 hover:bg-gray-100 rounded flex items-center gap-2"
                   title="Bookmark"
                 >
                   {bookmarkedQuestions.has(currentQuestion.id) ? (
@@ -1114,10 +1179,14 @@ export default function TakeTestPage() {
                   ) : (
                     <Bookmark className="w-5 h-5 text-gray-400" />
                   )}
+                  <span className="text-sm">Mark for Review</span>
                 </button>
-                {isEnglish && (
-                  <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 text-sm font-semibold">
-                    ABC
+                {isEnglish && !isOpenEnded && (
+                  <button 
+                    onClick={() => setShowCrossOutOptions(!showCrossOutOptions)}
+                    className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 text-sm font-semibold ml-auto"
+                  >
+                    {showCrossOutOptions ? 'Hide Cross Out' : 'Cross Out Options'}
                   </button>
                 )}
               </div>
@@ -1129,20 +1198,28 @@ export default function TakeTestPage() {
                 dangerouslySetInnerHTML={{ __html: currentQuestion.questionText }}
               />
 
-              {/* Question Image */}
-              {currentQuestion.questionImage && (
-                <div className="mb-6">
+              {/* Question Image - Math questions only (English images are above passage) */}
+              {currentQuestion.questionImage && !isEnglish && (
+                <div className="mb-6 flex justify-center">
                   <img
                     src={currentQuestion.questionImage}
                     alt="Question"
-                    className="max-w-full h-auto rounded"
+                    className={`max-w-full max-h-[500px] w-auto h-auto rounded object-contain ${
+                      isMath && !isOpenEnded ? 'max-w-[50%]' : isMath && isOpenEnded ? 'max-w-full' : ''
+                    }`}
+                    style={{ 
+                      maxWidth: isMath && !isOpenEnded ? '50%' : '100%',
+                      height: 'auto',
+                      display: 'block',
+                      margin: '0 auto'
+                    }}
                   />
                 </div>
               )}
 
               {/* Answer Options (Multiple Choice) */}
               {!isOpenEnded && (
-                <div className="space-y-2">
+                <div className={`space-y-2 ${isMath ? 'max-w-[50%] mx-auto' : ''}`}>
                   {currentQuestion.options.map((option, index) => {
                     const isCrossedOut = crossedOutOptions[currentQuestion.id]?.has(index)
                     return (
@@ -1174,14 +1251,14 @@ export default function TakeTestPage() {
                           <span className="font-semibold w-8 text-lg flex-shrink-0">{String.fromCharCode(65 + index)}</span>
                           <span className={`flex-1 ${isCrossedOut ? 'line-through' : ''}`}>{option}</span>
                         </div>
-                        {isEnglish && (
+                        {isEnglish && !isOpenEnded && showCrossOutOptions && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
                               e.preventDefault()
                               toggleCrossOut(currentQuestion.id, index)
                             }}
-                            className="p-2 hover:bg-gray-200 rounded text-gray-500 ml-2 flex-shrink-0"
+                            className="p-2 hover:bg-gray-200 rounded text-gray-500 ml-auto flex-shrink-0"
                             title="Cross out option"
                           >
                             <X className="w-5 h-5" />
@@ -1223,9 +1300,9 @@ export default function TakeTestPage() {
       {/* Bottom Footer - Bluebook Style - EXACT MATCH */}
       <footer className="text-gray-900 px-6 py-3 flex items-center justify-between relative" style={{ backgroundColor: '#eaedfc' }}>
         {/* Dashed border above footer */}
-        <div className="absolute top-0 left-0 right-0 h-px" style={{ 
-          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 8px, transparent 8px, transparent 16px)',
-          height: '1px'
+        <div className="absolute top-0 left-0 right-0" style={{ 
+          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 48px)',
+          height: '3px'
         }}></div>
         {/* Left: Student Name */}
         <div className="text-sm font-medium">{studentName}</div>
@@ -1234,7 +1311,8 @@ export default function TakeTestPage() {
         <div className="flex-1 flex justify-center">
           <button
             onClick={() => setShowQuestionMenu(!showQuestionMenu)}
-            className="flex items-center gap-2 hover:bg-blue-100 px-3 py-1 rounded"
+            className="flex items-center gap-2 px-3 py-1 rounded text-white"
+            style={{ backgroundColor: '#1e1f1b' }}
           >
             <span className="text-sm">Question <span className="font-semibold">{currentQuestionIndex + 1}</span> of {currentQuestions.length}</span>
             <ChevronUp className="w-4 h-4" />
@@ -1330,7 +1408,7 @@ export default function TakeTestPage() {
       {showReferenceSheet && (
         // @ts-ignore - react-draggable Draggable type compatibility
         <Draggable handle=".drag-handle" bounds="parent">
-          <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-96 max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
             <div className="bg-gray-100 px-4 py-2 flex items-center justify-between drag-handle cursor-move border-b">
               <span className="font-semibold text-sm">REFERENCE</span>
               <button
@@ -1355,7 +1433,7 @@ export default function TakeTestPage() {
       {showCalculator && (
         // @ts-ignore - react-draggable Draggable type compatibility
         <Draggable handle=".drag-handle" bounds="parent">
-          <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-[600px] h-[500px] flex flex-col">
+          <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-[800px] h-[600px] flex flex-col">
             <div className="bg-gray-100 px-4 py-2 flex items-center justify-between drag-handle cursor-move border-b">
               <span className="font-semibold text-sm">Calculator</span>
               <button

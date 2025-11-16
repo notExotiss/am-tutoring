@@ -64,12 +64,14 @@ export default function TakeAssignmentPage() {
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Set<string>>(new Set())
   const [crossedOutOptions, setCrossedOutOptions] = useState<Record<string, Set<number>>>({})
   const [openEndedAnswers, setOpenEndedAnswers] = useState<Record<string, string>>({})
+  const [showCrossOutOptions, setShowCrossOutOptions] = useState(false)
   const [highlights, setHighlights] = useState<Record<string, Array<{start: number, end: number, id: string}>>>({})
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [showReviewPage, setShowReviewPage] = useState(false)
   const [studentName, setStudentName] = useState('Student')
   const [userId, setUserId] = useState<string | null>(null)
   const [hasStarted, setHasStarted] = useState(false)
+  const [submittedScore, setSubmittedScore] = useState<string | null>(null)
   const dividerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -251,6 +253,23 @@ export default function TakeAssignmentPage() {
     }
   }, [isDraggingDivider])
 
+  useEffect(() => {
+    if (assignment && userId && assignmentState === 'completed') {
+      const loadScore = async () => {
+        if (!db) return
+        try {
+          const submissionDoc = await getDoc(doc(collection(db, 'assignmentSubmissions'), `${assignment.id}_${userId}`))
+          if (submissionDoc.exists()) {
+            setSubmittedScore(submissionDoc.data().score || 'N/A')
+          }
+        } catch (error) {
+          console.error('Error loading score:', error)
+        }
+      }
+      loadScore()
+    }
+  }, [assignment, userId, assignmentState])
+
   const startAssignment = async () => {
     const newState: AssignmentState = assignmentState === 'not-started' ? 'in-progress' : assignmentState
     setAssignmentState(newState)
@@ -277,29 +296,63 @@ export default function TakeAssignmentPage() {
   }
 
   const handleSubmitAssignment = async () => {
-    if (!assignment || !db) return
+    if (!assignment || !db || !userId) return
 
     try {
       let correct = 0
       let total = assignment.questions.length
+      const questionResults: Record<string, { correct: boolean, studentAnswer: number | string, correctAnswer: number | string }> = {}
+      
       assignment.questions.forEach(question => {
         if (question.questionType === 'open-ended') {
-          // For open-ended, we'd need to check manually
+          // Compare student answer with correct answer (normalize for comparison)
+          const studentAnswer = openEndedAnswers[question.id]?.trim() || ''
+          const correctAnswer = String(question.correctAnswer || '').trim()
+          let isCorrect = false
+          if (studentAnswer && correctAnswer) {
+            // Normalize answers for comparison (handle fractions, decimals, etc.)
+            const normalizedStudent = studentAnswer.replace(/\s+/g, '')
+            const normalizedCorrect = correctAnswer.replace(/\s+/g, '')
+            if (normalizedStudent === normalizedCorrect) {
+              isCorrect = true
+              correct++
+            }
+          }
+          questionResults[question.id] = { correct: isCorrect, studentAnswer, correctAnswer }
         } else {
-          if (answers[question.id] === question.correctAnswer) {
-            correct++
+          const isCorrect = answers[question.id] === question.correctAnswer
+          if (isCorrect) correct++
+          questionResults[question.id] = { 
+            correct: isCorrect, 
+            studentAnswer: answers[question.id] ?? '', 
+            correctAnswer: question.correctAnswer 
           }
         }
       })
 
       const score = `${correct}/${total} (${Math.round((correct / total) * 100)}%)`
 
+      // Save to assignment document
       await updateDoc(doc(db, 'assignments', assignment.id), {
         completed: true,
         completedDate: new Date(),
         score: score,
         answers: answers,
         openEndedAnswers: openEndedAnswers,
+      } as any)
+
+      // Save student submission with results
+      await setDoc(doc(collection(db, 'assignmentSubmissions'), `${assignment.id}_${userId}`), {
+        assignmentId: assignment.id,
+        userId: userId,
+        studentName: studentName,
+        score: score,
+        correct: correct,
+        total: total,
+        answers: answers,
+        openEndedAnswers: openEndedAnswers,
+        questionResults: questionResults,
+        submittedAt: new Date(),
       } as any)
 
       setAssignmentState('completed')
@@ -539,6 +592,8 @@ export default function TakeAssignmentPage() {
   }
 
   if (assignmentState === 'completed') {
+    const score = submittedScore || 'N/A'
+    
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
@@ -547,7 +602,13 @@ export default function TakeAssignmentPage() {
               <CheckCircle2 className="w-8 h-8 text-green-600" />
               <h1 className="text-3xl font-bold">Assignment Completed</h1>
             </div>
-            <p className="text-lg mb-6">You have successfully completed the assignment!</p>
+            <div className="mb-6">
+              <p className="text-lg mb-4">You have successfully completed the assignment!</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <h2 className="text-xl font-semibold mb-2 text-blue-900">Your Score</h2>
+                <p className="text-3xl font-bold text-blue-600">{score}</p>
+              </div>
+            </div>
             <Button onClick={() => router.push('/student-dashboard')} className="bg-blue-600 hover:bg-blue-700">
               Back to Dashboard
             </Button>
@@ -646,14 +707,14 @@ export default function TakeAssignmentPage() {
     <div className="min-h-screen bg-white flex flex-col">
       {/* Top Header */}
       <header className="px-6 py-3 flex items-center justify-between relative" style={{ backgroundColor: '#eaedfc' }}>
-        <div className="absolute bottom-0 left-0 right-0 h-px" style={{ 
-          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 8px, transparent 8px, transparent 16px)',
-          height: '1px'
+        <div className="absolute bottom-0 left-0 right-0" style={{ 
+          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 48px)',
+          height: '3px'
         }}></div>
         <div className="flex items-center gap-4">
           <div>
             <h2 className="text-sm font-semibold leading-tight text-gray-900">
-              {isEnglish ? 'Reading and Writing' : 'Math'}
+              {assignment?.title || (isEnglish ? 'Reading and Writing' : 'Math')}
             </h2>
             <button
               onClick={() => setShowDirections(!showDirections)}
@@ -830,7 +891,7 @@ export default function TakeAssignmentPage() {
         )}
 
         {isMath && isOpenEnded && (
-          <div className="w-80 overflow-y-auto p-6 border-r bg-gray-50">
+          <div className="w-1/2 overflow-y-auto p-6 border-r bg-gray-50" style={{ width: '50%' }}>
             <h3 className="font-semibold mb-4">Student-produced response directions</h3>
             <p className="text-sm mb-3">For <strong>student-produced response questions</strong>, solve each problem and enter your answer as described below.</p>
             <ul className="text-sm space-y-2 mb-6">
@@ -882,9 +943,14 @@ export default function TakeAssignmentPage() {
           </div>
         )}
 
-        <div 
-          className="flex-1 overflow-y-auto p-6"
-          style={isEnglish && currentQuestion?.readingPassage ? {} : { width: '100%' }}
+         <div 
+          className={`overflow-y-auto p-6 ${
+            isMath && isOpenEnded ? 'w-1/2' : 
+            isMath && !isOpenEnded ? 'flex-1' : 
+            isEnglish && currentQuestion?.readingPassage ? 'flex-1' : 
+            'w-full'
+          }`}
+          style={isMath && !isOpenEnded && showCalculator ? { marginRight: '850px', maxWidth: 'calc(100% - 850px)' } : {}}
         >
           {!currentQuestion ? (
             <div className="text-center py-12">
@@ -892,34 +958,31 @@ export default function TakeAssignmentPage() {
             </div>
           ) : currentQuestion && (
             <div>
-              <div className="flex items-center gap-4 mb-6 p-4 rounded-lg" style={{ backgroundColor: '#eaedfc' }}>
-                <div className="bg-black text-white w-10 h-10 flex items-center justify-center font-bold text-lg flex-shrink-0">
-                  {currentQuestionIndex + 1}
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 cursor-pointer"
-                  />
-                  <span className="text-sm">Mark for Review</span>
-                </label>
-                <button
-                  onClick={() => toggleBookmark(currentQuestion.id)}
-                  className="p-1 hover:bg-gray-100 rounded ml-auto"
-                  title="Bookmark"
-                >
-                  {bookmarkedQuestions.has(currentQuestion.id) ? (
-                    <BookmarkCheck className="w-5 h-5 text-blue-600 fill-blue-600" />
-                  ) : (
-                    <Bookmark className="w-5 h-5 text-gray-400" />
-                  )}
-                </button>
-                {isEnglish && (
-                  <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 text-sm font-semibold">
-                    ABC
-                  </button>
-                )}
-              </div>
+               <div className="flex items-center gap-4 mb-6 p-4 rounded-lg" style={{ backgroundColor: '#eaedfc' }}>
+                 <div className="bg-black text-white w-10 h-10 flex items-center justify-center font-bold text-lg flex-shrink-0">
+                   {currentQuestionIndex + 1}
+                 </div>
+                 <button
+                   onClick={() => toggleBookmark(currentQuestion.id)}
+                   className="p-1 hover:bg-gray-100 rounded flex items-center gap-2"
+                   title="Bookmark"
+                 >
+                   {bookmarkedQuestions.has(currentQuestion.id) ? (
+                     <BookmarkCheck className="w-5 h-5 text-blue-600 fill-blue-600" />
+                   ) : (
+                     <Bookmark className="w-5 h-5 text-gray-400" />
+                   )}
+                   <span className="text-sm">Mark for Review</span>
+                 </button>
+                 {isEnglish && !isOpenEnded && (
+                   <button 
+                     onClick={() => setShowCrossOutOptions(!showCrossOutOptions)}
+                     className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 text-sm font-semibold ml-auto"
+                   >
+                     {showCrossOutOptions ? 'Hide Cross Out' : 'Cross Out Options'}
+                   </button>
+                 )}
+               </div>
 
               <div
                 className="prose max-w-none mb-6"
@@ -927,67 +990,75 @@ export default function TakeAssignmentPage() {
                 dangerouslySetInnerHTML={{ __html: currentQuestion.questionText }}
               />
 
-              {currentQuestion.questionImage && (
-                <div className="mb-6">
-                  <img
-                    src={currentQuestion.questionImage}
-                    alt="Question"
-                    className="max-w-full h-auto rounded"
-                  />
-                </div>
-              )}
+               {currentQuestion.questionImage && (
+                 <div className="mb-6 flex justify-center">
+                   <img
+                     src={currentQuestion.questionImage}
+                     alt="Question"
+                     className={`max-w-full max-h-[500px] w-auto h-auto rounded object-contain ${
+                       isMath && !isOpenEnded ? 'max-w-[50%]' : isMath && isOpenEnded ? 'max-w-full' : ''
+                     }`}
+                     style={{ 
+                       maxWidth: isMath && !isOpenEnded ? '50%' : isMath && isOpenEnded ? '100%' : '100%',
+                       height: 'auto',
+                       display: 'block',
+                       margin: '0 auto'
+                     }}
+                   />
+                 </div>
+               )}
 
-              {!isOpenEnded && (
-                <div className="space-y-2">
-                  {currentQuestion.options.map((option, index) => {
-                    const isCrossedOut = crossedOutOptions[currentQuestion.id]?.has(index)
-                    return (
-                      <label
-                        key={index}
-                        className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors relative ${
-                          answers[currentQuestion.id] === index
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        } ${isCrossedOut ? 'opacity-50' : ''}`}
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                            answers[currentQuestion.id] === index
-                              ? 'border-blue-600 bg-blue-600'
-                              : 'border-gray-400'
-                          }`}>
-                            {answers[currentQuestion.id] === index && (
-                              <div className="w-3 h-3 rounded-full bg-white"></div>
-                            )}
-                          </div>
-                          <input
-                            type="radio"
-                            name={`question-${currentQuestion.id}`}
-                            checked={answers[currentQuestion.id] === index}
-                            onChange={() => setAnswers({ ...answers, [currentQuestion.id]: index })}
-                            className="sr-only"
-                          />
-                          <span className="font-semibold w-8 text-lg flex-shrink-0">{String.fromCharCode(65 + index)}</span>
-                          <span className={`flex-1 ${isCrossedOut ? 'line-through' : ''}`}>{option}</span>
-                        </div>
-                        {isEnglish && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              e.preventDefault()
-                              toggleCrossOut(currentQuestion.id, index)
-                            }}
-                            className="p-2 hover:bg-gray-200 rounded text-gray-500 ml-2 flex-shrink-0"
-                            title="Cross out option"
-                          >
-                            <X className="w-5 h-5" />
-                          </button>
-                        )}
-                      </label>
-                    )
-                  })}
-                </div>
-              )}
+               {!isOpenEnded && (
+                 <div className={`space-y-2 ${isMath ? 'max-w-[50%] mx-auto' : ''}`}>
+                   {currentQuestion.options.map((option, index) => {
+                     const isCrossedOut = crossedOutOptions[currentQuestion.id]?.has(index)
+                     return (
+                       <label
+                         key={index}
+                         className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors relative ${
+                           answers[currentQuestion.id] === index
+                             ? 'border-blue-600 bg-blue-50'
+                             : 'border-gray-200 hover:border-gray-300'
+                         } ${isCrossedOut ? 'opacity-50' : ''}`}
+                       >
+                         <div className="flex items-center gap-3 flex-1">
+                           <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                             answers[currentQuestion.id] === index
+                               ? 'border-blue-600 bg-blue-600'
+                               : 'border-gray-400'
+                           }`}>
+                             {answers[currentQuestion.id] === index && (
+                               <div className="w-3 h-3 rounded-full bg-white"></div>
+                             )}
+                           </div>
+                           <input
+                             type="radio"
+                             name={`question-${currentQuestion.id}`}
+                             checked={answers[currentQuestion.id] === index}
+                             onChange={() => setAnswers({ ...answers, [currentQuestion.id]: index })}
+                             className="sr-only"
+                           />
+                           <span className="font-semibold w-8 text-lg flex-shrink-0">{String.fromCharCode(65 + index)}</span>
+                           <span className={`flex-1 ${isCrossedOut ? 'line-through' : ''}`}>{option}</span>
+                         </div>
+                         {isEnglish && showCrossOutOptions && (
+                           <button
+                             onClick={(e) => {
+                               e.stopPropagation()
+                               e.preventDefault()
+                               toggleCrossOut(currentQuestion.id, index)
+                             }}
+                             className="p-2 hover:bg-gray-200 rounded text-gray-500 ml-2 flex-shrink-0"
+                             title="Cross out option"
+                           >
+                             <X className="w-5 h-5" />
+                           </button>
+                         )}
+                       </label>
+                     )
+                   })}
+                 </div>
+               )}
 
               {isOpenEnded && (
                 <div className="space-y-4">
@@ -1016,16 +1087,17 @@ export default function TakeAssignmentPage() {
       </div>
 
       <footer className="text-gray-900 px-6 py-3 flex items-center justify-between relative" style={{ backgroundColor: '#eaedfc' }}>
-        <div className="absolute top-0 left-0 right-0 h-px" style={{ 
-          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 8px, transparent 8px, transparent 16px)',
-          height: '1px'
+        <div className="absolute top-0 left-0 right-0" style={{ 
+          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 48px)',
+          height: '3px'
         }}></div>
         <div className="text-sm font-medium">{studentName}</div>
         
         <div className="flex-1 flex justify-center">
           <button
             onClick={() => setShowQuestionMenu(!showQuestionMenu)}
-            className="flex items-center gap-2 hover:bg-blue-100 px-3 py-1 rounded"
+            className="flex items-center gap-2 px-3 py-1 rounded text-white"
+            style={{ backgroundColor: '#1e1f1b' }}
           >
             <span className="text-sm">Question <span className="font-semibold">{currentQuestionIndex + 1}</span> of {assignment.questions.length}</span>
             <ChevronUp className="w-4 h-4" />

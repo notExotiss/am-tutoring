@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Trash2, CalendarIcon, FileText, X, Edit, Save, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { format } from 'date-fns'
@@ -25,7 +26,7 @@ interface Question {
   questionImage?: string
   readingPassage?: string
   options: string[]
-  correctAnswer: number
+  correctAnswer: number | string // Can be number for multiple choice or string for open-ended
   module?: number // Optional - assignments don't use modules
   section: 'english' | 'math'
   questionType?: 'multiple-choice' | 'open-ended'
@@ -73,6 +74,7 @@ export default function TestManagement() {
   const [showForm, setShowForm] = useState(false)
   const [editingTest, setEditingTest] = useState<Test | null>(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [activeModule, setActiveModule] = useState<'english-m1' | 'english-m2' | 'math-m1' | 'math-m2'>('english-m1')
   const [activeModules, setActiveModules] = useState({
     englishM1: true,
     englishM2: true,
@@ -632,46 +634,76 @@ export default function TestManagement() {
           </CardContent>
         </Card>
 
-        {/* Question Carousel */}
+        {/* Question Tabs and Grid */}
         {totalQuestions > 0 && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>
-                  Question {currentQuestionIndex + 1} of {totalQuestions}
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
-                    disabled={currentQuestionIndex === 0}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setCurrentQuestionIndex(Math.min(totalQuestions - 1, currentQuestionIndex + 1))}
-                    disabled={currentQuestionIndex === totalQuestions - 1}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                  <Button variant="outline" onClick={addQuestion}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Question
-                  </Button>
-                </div>
+                <CardTitle>Questions</CardTitle>
+                <Button variant="outline" onClick={addQuestion}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Question
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
-              {currentQuestion && (
-                <TestQuestionEditor
-                  question={currentQuestion}
-                  onUpdate={(updated) => updateQuestion(currentQuestion.id, updated)}
-                  onDelete={() => deleteQuestion(currentQuestion.id)}
-                />
-              )}
+              <Tabs value={activeModule} onValueChange={(value: string) => {
+                setActiveModule(value as 'english-m1' | 'english-m2' | 'math-m1' | 'math-m2')
+                setCurrentQuestionIndex(0)
+              }}>
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="english-m1">English Module 1</TabsTrigger>
+                  <TabsTrigger value="english-m2">English Module 2</TabsTrigger>
+                  <TabsTrigger value="math-m1">Math Module 1</TabsTrigger>
+                  <TabsTrigger value="math-m2">Math Module 2</TabsTrigger>
+                </TabsList>
+                
+                {(['english-m1', 'english-m2', 'math-m1', 'math-m2'] as const).map((module) => {
+                  const moduleQuestions = editingTest.questions.filter(q => {
+                    if (module === 'english-m1') return q.section === 'english' && q.module === 1
+                    if (module === 'english-m2') return q.section === 'english' && q.module === 2
+                    if (module === 'math-m1') return q.section === 'math' && q.module === 1
+                    if (module === 'math-m2') return q.section === 'math' && q.module === 2
+                    return false
+                  })
+                  
+                  return (
+                    <TabsContent key={module} value={module} className="mt-4">
+                      <div className="grid grid-cols-9 gap-2 mb-6">
+                        {moduleQuestions.map((q, idx) => {
+                          const globalIndex = editingTest.questions.findIndex(qu => qu.id === q.id)
+                          return (
+                            <button
+                              key={q.id}
+                              onClick={() => setCurrentQuestionIndex(globalIndex)}
+                              className={`w-12 h-12 rounded border-2 flex items-center justify-center text-sm font-semibold ${
+                                globalIndex === currentQuestionIndex
+                                  ? 'border-blue-600 bg-blue-50 text-blue-700'
+                                  : q.questionText
+                                  ? 'border-green-500 bg-green-50 text-green-700'
+                                  : 'border-gray-300 bg-gray-50 text-gray-700'
+                              }`}
+                              title={`Question ${idx + 1}${q.questionText ? ' (Has content)' : ' (Empty)'}`}
+                            >
+                              {idx + 1}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      
+                      {currentQuestion && editingTest.questions[currentQuestionIndex] && 
+                       (editingTest.questions[currentQuestionIndex].section === module.split('-')[0] && 
+                        editingTest.questions[currentQuestionIndex].module === parseInt(module.split('-')[1])) && (
+                        <TestQuestionEditor
+                          question={currentQuestion}
+                          onUpdate={(updated) => updateQuestion(currentQuestion.id, updated)}
+                          onDelete={() => deleteQuestion(currentQuestion.id)}
+                        />
+                      )}
+                    </TabsContent>
+                  )
+                })}
+              </Tabs>
             </CardContent>
           </Card>
         )}

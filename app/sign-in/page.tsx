@@ -41,13 +41,24 @@ export default function SignIn() {
               // Student needs to complete onboarding
               setShowOnboarding(true)
             } else {
+              // Student exists, redirect to dashboard
+              setShowOnboarding(false)
               router.push('/student-dashboard')
             }
           } catch (error) {
             console.error('Error checking student data:', error)
-            setShowOnboarding(true)
+            // Only show onboarding if there's a real error, not if student exists
+            const studentDoc = await getDoc(doc(db, 'students', user.uid))
+            if (!studentDoc.exists()) {
+              setShowOnboarding(true)
+            } else {
+              router.push('/student-dashboard')
+            }
           }
         }
+      } else {
+        // User signed out, reset onboarding state
+        setShowOnboarding(false)
       }
     })
 
@@ -81,11 +92,19 @@ export default function SignIn() {
             // Student needs to complete onboarding
             setShowOnboarding(true)
           } else {
+            // Student exists, redirect to dashboard
+            setShowOnboarding(false)
             router.push('/student-dashboard')
           }
         } catch (error) {
           console.error('Error checking student data:', error)
-          setShowOnboarding(true)
+          // Only show onboarding if student doesn't exist
+          const studentDoc = await getDoc(doc(db, 'students', result.user.uid))
+          if (!studentDoc.exists()) {
+            setShowOnboarding(true)
+          } else {
+            router.push('/student-dashboard')
+          }
         }
       }
     } catch (error) {
@@ -201,6 +220,19 @@ function StudentOnboardingForm({ user, onComplete }: { user: User, onComplete: (
 
     setSaving(true)
     try {
+      // Check if student already exists before creating
+      const existingStudent = await getDoc(doc(db, 'students', user.uid))
+      if (existingStudent.exists()) {
+        // Student already exists, just redirect
+        toast({
+          title: 'Welcome Back',
+          description: 'Your profile already exists. Redirecting to dashboard...',
+        })
+        onComplete()
+        return
+      }
+
+      // Create new student only if doesn't exist
       await setDoc(doc(db, 'students', user.uid), {
         name: user.displayName || user.email?.split('@')[0] || 'Student',
         email: user.email || '',

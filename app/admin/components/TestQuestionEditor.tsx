@@ -20,7 +20,7 @@ interface Question {
   questionImage?: string
   readingPassage?: string // For English questions
   options: string[]
-  correctAnswer: number
+  correctAnswer: number | string // Can be number for multiple choice or string for open-ended
   module?: number // Optional - assignments don&apos;t use modules
   section: 'english' | 'math'
   questionType?: 'multiple-choice' | 'open-ended'
@@ -317,12 +317,30 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
           </div>
         )}
 
-        {/* Open-Ended Note */}
+        {/* Open-Ended Answer */}
         {isOpenEnded && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded">
-            <p className="text-sm text-blue-800">
-              <strong>Note:</strong> Open-ended questions will automatically show the student-produced response instructions sidebar when students take the test.
+          <div>
+            <Label>Correct Answer</Label>
+            <Input
+              value={question.correctAnswer !== undefined ? String(question.correctAnswer) : ''}
+              onChange={(e) => {
+                const value = e.target.value
+                onUpdate({
+                  ...question,
+                  correctAnswer: value ? value : '',
+                })
+              }}
+              placeholder="Enter the correct answer (e.g., 3.5, 2/3, -1/3)"
+              className="mt-2"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Enter the correct answer for this open-ended question. Students&apos; answers will be compared to this value.
             </p>
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded mt-2">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> Open-ended questions will automatically show the student-produced response instructions sidebar when students take the test.
+              </p>
+            </div>
           </div>
         )}
       </CardContent>

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Trash2, CalendarIcon, BookOpen, Folder, X, Edit, Save, ChevronLeft, ChevronRight, Users } from 'lucide-react'
+import { Plus, Trash2, CalendarIcon, BookOpen, Folder, X, Edit, Save, ChevronLeft, ChevronRight, Users, Eye } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -28,7 +28,7 @@ interface AssignmentQuestion {
   questionImage?: string
   readingPassage?: string
   options: string[]
-  correctAnswer: number
+  correctAnswer: number | string // Can be number for multiple choice or string for open-ended
   section: 'english' | 'math'
   questionType?: 'multiple-choice' | 'open-ended'
 }
@@ -101,10 +101,11 @@ function DroppableFolder({ id, name, description, children, onAssign }: {
   )
 }
 
-function SortableAssignmentItem({ assignment, onDelete, onEdit }: { 
+function SortableAssignmentItem({ assignment, onDelete, onEdit, onViewSubmissions }: { 
   assignment: Assignment, 
   onDelete: (id: string) => void,
-  onEdit: (assignment: Assignment) => void
+  onEdit: (assignment: Assignment) => void,
+  onViewSubmissions: (assignment: Assignment) => void
 }) {
   const {
     attributes,
@@ -153,6 +154,9 @@ function SortableAssignmentItem({ assignment, onDelete, onEdit }: {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="ghost" size="icon" onClick={() => onViewSubmissions(assignment)} title="View Submissions">
+            <Eye className="w-4 h-4" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => onEdit(assignment)}>
             <Edit className="w-4 h-4" />
           </Button>
@@ -182,6 +186,10 @@ export default function AssignmentManagement() {
   const [showFolderForm, setShowFolderForm] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [showAssignFolderDialog, setShowAssignFolderDialog] = useState<Folder | null>(null)
+  const [viewingSubmissions, setViewingSubmissions] = useState<Assignment | null>(null)
+  const [submissions, setSubmissions] = useState<any[]>([])
+  const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null)
+  const [currentQuestionViewIndex, setCurrentQuestionViewIndex] = useState(0)
   const { toast } = useToast()
 
   const sensors = useSensors(
@@ -299,6 +307,42 @@ export default function AssignmentManagement() {
     setEditingAssignment({ ...assignment })
     setShowForm(true)
     setCurrentQuestionIndex(0)
+  }
+
+  const handleViewSubmissions = async (assignment: Assignment) => {
+    if (!db || !assignment.id) return
+    
+    try {
+      setViewingSubmissions(assignment)
+      const submissionsRef = collection(db, 'assignmentSubmissions')
+      const q = query(submissionsRef, orderBy('submittedAt', 'desc'))
+      const querySnapshot = await getDocs(q)
+      
+      const submissionsList: any[] = []
+      querySnapshot.forEach((doc) => {
+        const data = doc.data()
+        if (data.assignmentId === assignment.id) {
+          submissionsList.push({
+            id: doc.id,
+            ...data,
+            submittedAt: data.submittedAt?.toDate() || null,
+          })
+        }
+      })
+      
+      setSubmissions(submissionsList)
+      if (submissionsList.length > 0) {
+        setSelectedSubmission(submissionsList[0])
+        setCurrentQuestionViewIndex(0)
+      }
+    } catch (error) {
+      console.error('Error loading submissions:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load submissions.',
+        variant: 'destructive',
+      })
+    }
   }
 
   const handleSaveAssignment = async () => {
@@ -959,6 +1003,189 @@ export default function AssignmentManagement() {
         </Card>
       )}
 
+      {/* View Submissions Modal */}
+      {viewingSubmissions && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+            <CardHeader className="flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Submissions: {viewingSubmissions.title}</CardTitle>
+                  <CardDescription>{submissions.length} submission{submissions.length !== 1 ? 's' : ''}</CardDescription>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => {
+                  setViewingSubmissions(null)
+                  setSubmissions([])
+                  setSelectedSubmission(null)
+                }}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden flex flex-col">
+              {submissions.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No submissions yet.</p>
+                </div>
+              ) : (
+                <div className="flex gap-4 h-full overflow-hidden">
+                  {/* Student List */}
+                  <div className="w-64 border-r pr-4 overflow-y-auto">
+                    <h3 className="font-semibold mb-3">Students</h3>
+                    <div className="space-y-2">
+                      {submissions.map((submission) => (
+                        <button
+                          key={submission.id}
+                          onClick={() => {
+                            setSelectedSubmission(submission)
+                            setCurrentQuestionViewIndex(0)
+                          }}
+                          className={`w-full text-left p-3 rounded border-2 transition-colors ${
+                            selectedSubmission?.id === submission.id
+                              ? 'border-blue-600 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="font-semibold">{submission.studentName}</div>
+                          <div className="text-sm text-gray-600">{submission.score}</div>
+                          {submission.submittedAt && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {format(submission.submittedAt, 'MMM dd, yyyy HH:mm')}
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Question View */}
+                  {selectedSubmission && viewingSubmissions && (
+                    <div className="flex-1 overflow-y-auto">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">{selectedSubmission.studentName}&apos;s Answers</h3>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setCurrentQuestionViewIndex(Math.max(0, currentQuestionViewIndex - 1))}
+                            disabled={currentQuestionViewIndex === 0}
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </Button>
+                          <span className="text-sm font-medium px-2">
+                            Question {currentQuestionViewIndex + 1} of {viewingSubmissions.questions.length}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setCurrentQuestionViewIndex(Math.min(viewingSubmissions.questions.length - 1, currentQuestionViewIndex + 1))}
+                            disabled={currentQuestionViewIndex === viewingSubmissions.questions.length - 1}
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {viewingSubmissions.questions[currentQuestionViewIndex] && (() => {
+                        const question = viewingSubmissions.questions[currentQuestionViewIndex]
+                        const questionResult = selectedSubmission.questionResults?.[question.id]
+                        const studentAnswer = question.questionType === 'open-ended' 
+                          ? selectedSubmission.openEndedAnswers?.[question.id]
+                          : selectedSubmission.answers?.[question.id]
+                        const isCorrect = questionResult?.correct || false
+                        const correctAnswer = question.correctAnswer
+                        
+                        return (
+                          <div className="space-y-4">
+                            <div className="p-4 rounded-lg" style={{ backgroundColor: '#eaedfc' }}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="bg-black text-white w-8 h-8 flex items-center justify-center font-bold text-sm">
+                                  {currentQuestionViewIndex + 1}
+                                </div>
+                                <Badge className={isCorrect ? 'bg-green-600' : 'bg-red-600'}>
+                                  {isCorrect ? 'Correct' : 'Incorrect'}
+                                </Badge>
+                              </div>
+                            </div>
+                            
+                            <div
+                              className="prose max-w-none mb-4"
+                              dangerouslySetInnerHTML={{ __html: question.questionText }}
+                            />
+                            
+                            {question.questionImage && (
+                              <div className="mb-4">
+                                <img
+                                  src={question.questionImage}
+                                  alt="Question"
+                                  className="max-w-full max-h-[400px] rounded"
+                                />
+                              </div>
+                            )}
+                            
+                            {question.readingPassage && (
+                              <div className="mb-4 p-4 border rounded bg-gray-50">
+                                <div
+                                  className="prose max-w-none"
+                                  dangerouslySetInnerHTML={{ __html: question.readingPassage }}
+                                />
+                              </div>
+                            )}
+                            
+                            {question.questionType === 'open-ended' ? (
+                              <div className="space-y-2">
+                                <div className="p-4 border-2 rounded-lg">
+                                  <div className="text-sm text-gray-600 mb-1">Student Answer:</div>
+                                  <div className="text-lg font-mono">{studentAnswer || '(empty)'}</div>
+                                </div>
+                                <div className={`p-4 border-2 rounded-lg ${isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+                                  <div className="text-sm text-gray-600 mb-1">Correct Answer:</div>
+                                  <div className="text-lg font-mono">{String(correctAnswer)}</div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {question.options.map((option: string, index: number) => {
+                                  const isSelected = studentAnswer === index
+                                  const isCorrectOption = correctAnswer === index
+                                  return (
+                                    <div
+                                      key={index}
+                                      className={`p-4 border-2 rounded-lg ${
+                                        isCorrectOption
+                                          ? 'border-green-500 bg-green-50'
+                                          : isSelected
+                                          ? 'border-red-500 bg-red-50'
+                                          : 'border-gray-200'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-semibold w-6">{String.fromCharCode(65 + index)}</span>
+                                        <span>{option}</span>
+                                        {isCorrectOption && (
+                                          <Badge className="ml-auto bg-green-600">Correct</Badge>
+                                        )}
+                                        {isSelected && !isCorrectOption && (
+                                          <Badge className="ml-auto bg-red-600">Selected</Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Assignments and Folders with Drag and Drop */}
       {/* @ts-ignore - dnd-kit DndContext type compatibility */}
       <DndContext
@@ -981,6 +1208,7 @@ export default function AssignmentManagement() {
                     assignment={assignment}
                     onDelete={handleDelete}
                     onEdit={handleEditAssignment}
+                    onViewSubmissions={handleViewSubmissions}
                   />
                 ))}
               </SortableContext>
@@ -1008,6 +1236,7 @@ export default function AssignmentManagement() {
                       assignment={assignment}
                       onDelete={handleDelete}
                       onEdit={handleEditAssignment}
+                      onViewSubmissions={handleViewSubmissions}
                     />
                   ))}
                 </SortableContext>
