@@ -42,18 +42,42 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
 ## Step 6: Firestore Security Rules
 
-Update your Firestore security rules to allow authenticated users to read/write their own data:
+Update your Firestore security rules to allow authenticated users to manage all students. Since this is a tutoring management system, the authorized tutor needs access to all student records:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /students/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Allow authenticated users to read/write all students
+    // In production, you may want to restrict this to specific email addresses
+    match /students/{studentId} {
+      allow read, write: if request.auth != null;
     }
   }
 }
 ```
+
+**For Production (More Secure):**
+
+If you want to restrict access to only your authorized email address, use this instead:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /students/{studentId} {
+      allow read, write: if request.auth != null && 
+        request.auth.token.email == 'iamaaritmalhotra@gmail.com';
+    }
+  }
+}
+```
+
+**To Update Security Rules:**
+1. Go to Firebase Console > Firestore Database
+2. Click on the "Rules" tab
+3. Replace the existing rules with one of the rule sets above
+4. Click "Publish" to save the changes
 
 ## Step 7: Vercel Deployment
 
