@@ -570,9 +570,17 @@ export default function StudentDashboard() {
                                       </p>
                                     )}
                                   </div>
-                                  <Badge variant="outline" className="ml-4">
-                                    Pending
-                                  </Badge>
+                                  <div className="flex items-center gap-2 ml-4">
+                                    <Button
+                                      onClick={() => router.push(`/student-dashboard/take-assignment/${assignment.id}`)}
+                                      className="bg-blue-600 hover:bg-blue-700"
+                                    >
+                                      Start Assignment
+                                    </Button>
+                                    <Badge variant="outline">
+                                      Pending
+                                    </Badge>
+                                  </div>
                                 </div>
                               </div>
                             ))}
@@ -597,9 +605,17 @@ export default function StudentDashboard() {
                               </p>
                             )}
                           </div>
-                          <Badge variant="outline" className="ml-4">
-                            Pending
-                          </Badge>
+                          <div className="flex items-center gap-2 ml-4">
+                            <Button
+                              onClick={() => router.push(`/student-dashboard/take-assignment/${assignment.id}`)}
+                              className="bg-blue-600 hover:bg-blue-700"
+                            >
+                              Start Assignment
+                            </Button>
+                            <Badge variant="outline">
+                              Pending
+                            </Badge>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

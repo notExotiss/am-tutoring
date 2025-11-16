@@ -68,6 +68,8 @@ export default function TakeTestPage() {
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Set<string>>(new Set())
   const [crossedOutOptions, setCrossedOutOptions] = useState<Record<string, Set<number>>>({})
   const [openEndedAnswers, setOpenEndedAnswers] = useState<Record<string, string>>({})
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [studentName, setStudentName] = useState('Student')
   const dividerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -76,12 +78,19 @@ export default function TakeTestPage() {
   }, [params.testId])
 
   useEffect(() => {
-    if (testState !== 'not-started' && testState !== 'break' && testState !== 'completed' && !isPaused) {
+    // Timer runs for active test sections and break
+    if (testState !== 'not-started' && testState !== 'completed' && !isPaused && timeRemaining > 0) {
       const interval = setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
-            handleTimeUp()
-            return 0
+            if (testState === 'break') {
+              // Break time is up, allow continuing
+              return 0
+            } else {
+              // Test section time is up
+              handleTimeUp()
+              return 0
+            }
           }
           return prev - 1
         })
@@ -90,7 +99,7 @@ export default function TakeTestPage() {
       return () => clearInterval(interval)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [testState, isPaused])
+  }, [testState, isPaused, timeRemaining])
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -182,10 +191,11 @@ export default function TakeTestPage() {
   }
 
   const startTest = () => {
-    setTestState('english-m1')
-    const timeLimit = getTimeLimit()
-    if (timeLimit) {
-      setTimeRemaining(timeLimit * 60)
+    // Set state and timer together - don't rely on async state update
+    const newState: TestState = 'english-m1'
+    setTestState(newState)
+    if (test?.timeLimitEnabled && test.englishModule1Time) {
+      setTimeRemaining(test.englishModule1Time * 60)
     }
   }
 
@@ -209,22 +219,26 @@ export default function TakeTestPage() {
         const m2Time = test?.englishModule2Time || 32
         if (test?.timeLimitEnabled) setTimeRemaining(m2Time * 60)
         setCurrentQuestionIndex(0)
+        setIsPaused(false)
         break
       case 'english-m2':
         setTestState('break')
         if (test?.timeLimitEnabled) setTimeRemaining((test.breakTime || 10) * 60)
+        setIsPaused(false)
         break
       case 'break':
         setTestState('math-m1')
         const mathM1Time = test?.mathModule1Time || 35
         if (test?.timeLimitEnabled) setTimeRemaining(mathM1Time * 60)
         setCurrentQuestionIndex(0)
+        setIsPaused(false)
         break
       case 'math-m1':
         setTestState('math-m2')
         const mathM2Time = test?.mathModule2Time || 35
         if (test?.timeLimitEnabled) setTimeRemaining(mathM2Time * 60)
         setCurrentQuestionIndex(0)
+        setIsPaused(false)
         break
       case 'math-m2':
         handleSubmitTest()
@@ -308,6 +322,34 @@ export default function TakeTestPage() {
     })
   }
 
+  // Get student name from auth
+  useEffect(() => {
+    import('firebase/auth').then(({ onAuthStateChanged, auth }) => {
+      onAuthStateChanged(auth, (user) => {
+        if (user?.displayName) {
+          setStudentName(user.displayName)
+        } else if (user?.email) {
+          const emailParts = user.email.split('@')[0].split(/[._-]/)
+          const formattedName = emailParts.map((part: string) => 
+            part.charAt(0).toUpperCase() + part.slice(1)
+          ).join(' ')
+          setStudentName(formattedName || 'Student')
+        }
+      })
+    })
+  }, [])
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMoreMenu && !(event.target as Element).closest('.more-menu-container')) {
+        setShowMoreMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showMoreMenu])
+
   const currentQuestions = getCurrentQuestions()
   const currentQuestion = currentQuestions[currentQuestionIndex]
   const isEnglish = testState === 'english-m1' || testState === 'english-m2'
@@ -368,19 +410,36 @@ export default function TakeTestPage() {
 
   if (testState === 'break') {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <h1 className="text-3xl font-bold mb-4">Break Time</h1>
-            <p className="text-lg mb-4">Take a {test.breakTime || 10} minute break before starting the Math section.</p>
+      <div className="min-h-screen bg-white flex flex-col">
+        {/* Header */}
+        <header className="bg-[#1a1f3a] text-white px-6 py-3">
+          <h2 className="text-sm font-semibold">Break</h2>
+        </header>
+        
+        {/* Break Content */}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="max-w-2xl w-full text-center">
+            <h1 className="text-3xl font-bold mb-4 text-gray-900">Break Time</h1>
+            <p className="text-lg mb-6 text-gray-600">
+              Take a {test.breakTime || 10} minute break before starting the Math section.
+            </p>
             {test.timeLimitEnabled && (
-              <div className="text-2xl font-bold text-blue-600 mb-4">
+              <div className="text-2xl font-bold text-blue-600 mb-6">
                 Time Remaining: {formatTime(timeRemaining)}
               </div>
             )}
-            <Button onClick={handleNextSection} className="bg-blue-600 hover:bg-blue-700" disabled={test.timeLimitEnabled && timeRemaining > 0}>
+            <Button 
+              onClick={handleNextSection} 
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
+              disabled={test.timeLimitEnabled && timeRemaining > 0}
+            >
               Start Math Section
             </Button>
+            {test.timeLimitEnabled && timeRemaining > 0 && (
+              <p className="text-sm text-gray-500 mt-4">
+                Please wait for the break to finish before continuing.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -408,36 +467,37 @@ export default function TakeTestPage() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* Top Header - Bluebook Style */}
-      <div className="bg-[#1a1f3a] text-white px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-6">
+      {/* Top Header - Bluebook Style - EXACT MATCH */}
+      <header className="bg-[#1a1f3a] text-white px-6 py-3 flex items-center justify-between" style={{ backgroundColor: '#1a1f3a' }}>
+        {/* Left: Section Title */}
+        <div className="flex items-center gap-4">
           <div>
-            <div className="text-sm font-semibold">
+            <h2 className="text-sm font-semibold leading-tight">
               {isEnglish ? 'Section 1: Reading and Writing' : 'Section 2: Math'}
-            </div>
+            </h2>
             <button
               onClick={() => setShowDirections(!showDirections)}
-              className="text-xs text-blue-300 hover:text-blue-200 flex items-center gap-1 mt-1"
+              className="text-xs text-blue-300 hover:text-blue-200 flex items-center gap-1 mt-0.5"
             >
               Directions {showDirections ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
           </div>
         </div>
         
-        <div className="flex items-center gap-6">
+        {/* Center: Timer */}
+        <div className="flex-1 flex justify-center">
           {test.timeLimitEnabled && showTimer && (
             <div className="text-center">
-              <div className="text-2xl font-bold">{formatTime(timeRemaining)}</div>
+              <h1 className="text-2xl font-bold leading-tight">{formatTime(timeRemaining)}</h1>
               <button
                 onClick={() => setShowTimer(false)}
-                className="text-xs text-blue-300 hover:text-blue-200"
+                className="text-xs text-blue-300 hover:text-blue-200 mt-0.5"
               >
                 Hide
               </button>
             </div>
           )}
-          
-          {!showTimer && (
+          {!showTimer && test.timeLimitEnabled && (
             <button
               onClick={() => setShowTimer(true)}
               className="text-xs text-blue-300 hover:text-blue-200 px-2 py-1 border border-blue-300 rounded"
@@ -445,43 +505,86 @@ export default function TakeTestPage() {
               Show Timer
             </button>
           )}
+        </div>
 
-          <div className="flex items-center gap-2">
-            {isEnglish && (
+        {/* Right: Icons */}
+        <div className="flex items-center gap-3">
+          {isEnglish && (
+            <button
+              onClick={() => setHighlightMode(!highlightMode)}
+              className={`p-2 rounded ${highlightMode ? 'bg-blue-600' : 'hover:bg-blue-800'}`}
+              title="Highlights & Notes"
+            >
+              <Highlighter className="w-5 h-5" />
+            </button>
+          )}
+          
+          {isMath && (
+            <>
               <button
-                onClick={() => setHighlightMode(!highlightMode)}
-                className={`p-2 rounded ${highlightMode ? 'bg-blue-600' : 'hover:bg-blue-800'}`}
-                title="Highlights & Notes"
+                onClick={() => setShowCalculator(!showCalculator)}
+                className={`p-2 rounded ${showCalculator ? 'bg-blue-600' : 'hover:bg-blue-800'}`}
+                title="Calculator"
               >
-                <Highlighter className="w-5 h-5" />
+                <Calculator className="w-5 h-5" />
               </button>
-            )}
-            
-            {isMath && (
-              <>
-                <button
-                  onClick={() => setShowCalculator(!showCalculator)}
-                  className={`p-2 rounded ${showCalculator ? 'bg-blue-600' : 'hover:bg-blue-800'}`}
-                  title="Calculator"
-                >
-                  <Calculator className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setShowReferenceSheet(!showReferenceSheet)}
-                  className={`p-2 rounded ${showReferenceSheet ? 'bg-blue-600' : 'hover:bg-blue-800'}`}
-                  title="Reference"
-                >
-                  <FileText className="w-5 h-5" />
-                </button>
-              </>
-            )}
-            
-            <button className="p-2 rounded hover:bg-blue-800">
+              <button
+                onClick={() => setShowReferenceSheet(!showReferenceSheet)}
+                className={`p-2 rounded ${showReferenceSheet ? 'bg-blue-600' : 'hover:bg-blue-800'}`}
+                title="Reference"
+              >
+                <FileText className="w-5 h-5" />
+              </button>
+            </>
+          )}
+          
+          {/* Three Dots Menu */}
+          <div className="relative more-menu-container">
+            <button 
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className="p-2 rounded hover:bg-blue-800"
+              title="More"
+            >
               <MoreVertical className="w-5 h-5" />
             </button>
+            {showMoreMenu && (
+              <div className="absolute right-0 top-full mt-2 bg-white border border-gray-300 rounded-lg shadow-xl z-50 min-w-[200px]">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setShowHighlightsNotes(!showHighlightsNotes)
+                      setShowMoreMenu(false)
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Highlights & Notes
+                  </button>
+                  <button
+                    onClick={() => {
+                      handlePause()
+                      setShowMoreMenu(false)
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    {isPaused ? 'Resume' : 'Pause'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm('Are you sure you want to exit? Your progress will be saved.')) {
+                        router.push('/student-dashboard')
+                      }
+                      setShowMoreMenu(false)
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Exit Test
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Directions Dropdown */}
       {showDirections && (
@@ -583,33 +686,40 @@ export default function TakeTestPage() {
           className="flex-1 overflow-y-auto p-6"
           style={isEnglish && currentQuestion?.readingPassage ? {} : { width: '100%' }}
         >
-          {currentQuestion && (
+          {!currentQuestion ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No questions available for this section.</p>
+            </div>
+          ) : currentQuestion && (
             <div>
-              {/* Question Header */}
+              {/* Question Header - Bluebook Style */}
               <div className="flex items-center gap-4 mb-6">
-                <div className="bg-black text-white w-10 h-10 flex items-center justify-center font-bold text-lg">
+                <div className="bg-black text-white w-10 h-10 flex items-center justify-center font-bold text-lg flex-shrink-0">
                   {currentQuestionIndex + 1}
                 </div>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    className="w-4 h-4"
+                    className="w-4 h-4 cursor-pointer"
                   />
                   <span className="text-sm">Mark for Review</span>
                 </label>
                 <button
                   onClick={() => toggleBookmark(currentQuestion.id)}
-                  className="p-1 hover:bg-gray-100 rounded"
+                  className="p-1 hover:bg-gray-100 rounded ml-auto"
+                  title="Bookmark"
                 >
                   {bookmarkedQuestions.has(currentQuestion.id) ? (
-                    <BookmarkCheck className="w-5 h-5 text-blue-600" />
+                    <BookmarkCheck className="w-5 h-5 text-blue-600 fill-blue-600" />
                   ) : (
                     <Bookmark className="w-5 h-5 text-gray-400" />
                   )}
                 </button>
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <span className="text-sm font-semibold">ABC</span>
-                </button>
+                {isEnglish && (
+                  <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 text-sm font-semibold">
+                    ABC
+                  </button>
+                )}
               </div>
 
               {/* Question Text */}
@@ -709,26 +819,29 @@ export default function TakeTestPage() {
         </div>
       </div>
 
-      {/* Bottom Footer - Bluebook Style */}
-      <div className="bg-[#1a1f3a] text-white px-6 py-3 flex items-center justify-between">
-        <div className="text-sm">Aarit Malhotra</div>
+      {/* Bottom Footer - Bluebook Style - EXACT MATCH */}
+      <footer className="bg-[#e6f2ff] text-gray-900 px-6 py-3 flex items-center justify-between border-t border-gray-300" style={{ backgroundColor: '#e6f2ff' }}>
+        {/* Left: Student Name */}
+        <div className="text-sm font-medium">{studentName}</div>
         
-        <div className="flex items-center gap-4">
+        {/* Center: Question Navigation */}
+        <div className="flex-1 flex justify-center">
           <button
             onClick={() => setShowQuestionMenu(!showQuestionMenu)}
-            className="flex items-center gap-2 hover:bg-blue-800 px-3 py-1 rounded"
+            className="flex items-center gap-2 hover:bg-blue-100 px-3 py-1 rounded"
           >
-            <span>Question {currentQuestionIndex + 1} of {currentQuestions.length}</span>
+            <span className="text-sm">Question <span className="font-semibold">{currentQuestionIndex + 1}</span> of {currentQuestions.length}</span>
             <ChevronUp className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Right: Navigation Buttons */}
+        <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
             disabled={currentQuestionIndex === 0}
-            className="text-white hover:bg-blue-800"
+            className="text-gray-900 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -753,34 +866,54 @@ export default function TakeTestPage() {
             )}
           </Button>
         </div>
-      </div>
+      </footer>
 
-      {/* Question Navigation Menu */}
+      {/* Question Navigation Menu - Bluebook Style */}
       {showQuestionMenu && (
-        <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-white border-2 border-gray-300 rounded-lg shadow-xl p-4 z-50 max-w-4xl">
-          <div className="mb-2 text-sm font-semibold text-gray-700">Select a question:</div>
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-white border-2 border-gray-300 rounded-lg shadow-xl p-6 z-50 max-w-4xl w-[90%]">
+          <div className="mb-4 text-sm font-semibold text-gray-700">Select a question:</div>
           <div className="grid grid-cols-10 gap-2">
-            {currentQuestions.map((q, index) => (
-              <button
-                key={q.id}
-                onClick={() => {
-                  setCurrentQuestionIndex(index)
-                  setShowQuestionMenu(false)
-                }}
-                className={`w-10 h-10 rounded border-2 flex items-center justify-center font-semibold text-sm transition-colors ${
-                  index === currentQuestionIndex
-                    ? 'border-blue-600 bg-blue-50 text-blue-600'
-                    : answers[q.id] !== undefined || openEndedAnswers[q.id]
-                    ? 'border-green-500 bg-green-50 text-green-600'
-                    : bookmarkedQuestions.has(q.id)
-                    ? 'border-yellow-500 bg-yellow-50 text-yellow-600'
-                    : 'border-gray-300 hover:border-gray-400'
-                }`}
-                title={`Question ${index + 1}${bookmarkedQuestions.has(q.id) ? ' (Bookmarked)' : ''}`}
-              >
-                {index + 1}
-              </button>
-            ))}
+            {currentQuestions.map((q, index) => {
+              const hasAnswer = answers[q.id] !== undefined || openEndedAnswers[q.id]
+              const isBookmarked = bookmarkedQuestions.has(q.id)
+              const isCurrent = index === currentQuestionIndex
+              
+              return (
+                <button
+                  key={q.id}
+                  onClick={() => {
+                    setCurrentQuestionIndex(index)
+                    setShowQuestionMenu(false)
+                  }}
+                  className={`w-10 h-10 rounded border-2 flex items-center justify-center font-semibold text-sm transition-colors ${
+                    isCurrent
+                      ? 'border-blue-600 bg-blue-50 text-blue-600'
+                      : hasAnswer
+                      ? 'border-green-500 bg-green-50 text-green-600'
+                      : isBookmarked
+                      ? 'border-yellow-500 bg-yellow-50 text-yellow-600'
+                      : 'border-gray-300 hover:border-gray-400 bg-white'
+                  }`}
+                  title={`Question ${index + 1}${isBookmarked ? ' (Bookmarked)' : ''}${hasAnswer ? ' (Answered)' : ''}`}
+                >
+                  {index + 1}
+                </button>
+              )
+            })}
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-200 flex items-center gap-4 text-xs text-gray-600">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-blue-600 bg-blue-50 rounded"></div>
+              <span>Current</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-green-500 bg-green-50 rounded"></div>
+              <span>Answered</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-yellow-500 bg-yellow-50 rounded"></div>
+              <span>Bookmarked</span>
+            </div>
           </div>
         </div>
       )}
