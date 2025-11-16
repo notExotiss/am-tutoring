@@ -767,9 +767,8 @@ export default function TestManagement() {
                                     questionType: 'multiple-choice' as const,
                                   }
                                   const allQuestions = [...editingTest.questions, newQuestion]
+                                  const newIndex = allQuestions.length - 1
                                   setEditingTest({ ...editingTest, questions: allQuestions })
-                                  // Find the index of the newly created question
-                                  const newIndex = allQuestions.findIndex(q => q.id === newQuestion.id)
                                   setCurrentQuestionIndex(newIndex)
                                 }
                               }}
@@ -780,12 +779,14 @@ export default function TestManagement() {
                               }`}
                               style={{
                                 borderRadius: '6px',
-                                width: '40px',
-                                height: '40px',
+                                minWidth: '50px',
+                                width: 'auto',
+                                height: '36px',
+                                paddingLeft: '12px',
+                                paddingRight: '12px',
                                 borderWidth: isSelected ? '2px' : '1px',
                                 borderColor: isSelected ? '#000000' : '#d1d5db',
                                 margin: 0,
-                                padding: 0,
                               }}
                               title={question ? `Question ${idx + 1}${question.questionText ? ' (Has content)' : ' (Empty)'}` : `Question ${idx + 1} (Click to create)`}
                             >
@@ -796,12 +797,14 @@ export default function TestManagement() {
                       </div>
                       
                       {(() => {
-                        const currentQ = editingTest.questions[currentQuestionIndex]
-                        // Show editor if current question is in this module, or if no question is selected but we're in this module
-                        if (currentQ) {
-                          const moduleSection = module.split('-')[0]
-                          const moduleNumber = parseInt(module.split('-')[1])
-                          if (currentQ.section === moduleSection && currentQ.module === moduleNumber) {
+                        const moduleSection = module.split('-')[0]
+                        const moduleNumber = parseInt(module.split('-')[1])
+                        
+                        // Check if currentQuestionIndex is valid and question exists
+                        if (currentQuestionIndex >= 0 && currentQuestionIndex < editingTest.questions.length) {
+                          const currentQ = editingTest.questions[currentQuestionIndex]
+                          // Show editor if current question is in this module
+                          if (currentQ && currentQ.section === moduleSection && currentQ.module === moduleNumber) {
                             return (
                               <TestQuestionEditor
                                 key={currentQ.id}
@@ -812,6 +815,7 @@ export default function TestManagement() {
                             )
                           }
                         }
+                        
                         // If no question selected or question is in different module, show empty state
                         return (
                           <div className="text-center py-12 text-gray-500">
