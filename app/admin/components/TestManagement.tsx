@@ -213,7 +213,7 @@ export default function TestManagement() {
     if (firstQuestionIndex >= 0) {
       setCurrentQuestionIndex(firstQuestionIndex)
     }
-  }, [activeModule, showForm, editingTest]) // Include editingTest but use ref to prevent unnecessary runs
+  }, [activeModule, showForm, editingTest, currentQuestionIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleViewSubmissions = async (test: Test) => {
     if (!db || !test.id) return

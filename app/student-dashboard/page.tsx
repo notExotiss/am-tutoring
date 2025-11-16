@@ -900,7 +900,7 @@ export default function StudentDashboard() {
                 
                 return (
                   <div className="flex-1 overflow-y-auto flex flex-col">
-                    <Tabs value={submissionActiveModule} onValueChange={(value) => {
+                    <Tabs value={submissionActiveModule} onValueChange={(value: string) => {
                       setSubmissionActiveModule(value as 'english-m1' | 'english-m2' | 'math-m1' | 'math-m2')
                       setCurrentQuestionViewIndex(0)
                     }}>
