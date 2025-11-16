@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter, Allura } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
+import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
 
 const inter = Inter({ 
@@ -46,6 +47,7 @@ export default function RootLayout({
       <body className={`${inter.className} ${inter.variable} ${allura.variable} antialiased`}>
         {children}
         <Analytics />
+        <Toaster />
       </body>
     </html>
   )

@@ -7,6 +7,7 @@ import { auth, db } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 interface StudentData {
   name: string
@@ -55,6 +56,7 @@ export default function StudentStats() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const { toast } = useToast()
   const [studentData, setStudentData] = useState<StudentData>({
     name: '',
     email: '',
@@ -156,7 +158,11 @@ export default function StudentStats() {
         }
       } catch (error) {
         console.error('Error loading student data:', error)
-        alert('Failed to load student data. Please refresh the page.')
+        toast({
+          title: 'Error Loading Data',
+          description: 'Failed to load student data. Please refresh the page.',
+          variant: 'destructive',
+        })
       }
     }
     
@@ -171,12 +177,16 @@ export default function StudentStats() {
     })
 
     return () => unsubscribe()
-  }, [router])
+  }, [router, toast])
 
 
   const handleSave = async () => {
     if (!user || !db) {
-      alert('Firebase is not configured. Please set up your environment variables.')
+      toast({
+        title: 'Configuration Error',
+        description: 'Firebase is not configured. Please set up your environment variables.',
+        variant: 'destructive',
+      })
       return
     }
     
@@ -184,10 +194,17 @@ export default function StudentStats() {
     try {
       const docRef = doc(db, 'students', user.uid)
       await updateDoc(docRef, studentData as any)
-      alert('Data saved successfully!')
+      toast({
+        title: 'Success',
+        description: 'Data saved successfully!',
+      })
     } catch (error) {
       console.error('Error saving data:', error)
-      alert('Failed to save data. Please try again.')
+      toast({
+        title: 'Error Saving Data',
+        description: 'Failed to save data. Please try again.',
+        variant: 'destructive',
+      })
     } finally {
       setSaving(false)
     }
@@ -203,7 +220,11 @@ export default function StudentStats() {
       router.push('/sign-in')
     } catch (error) {
       console.error('Error signing out:', error)
-      alert('Failed to sign out.')
+      toast({
+        title: 'Error',
+        description: 'Failed to sign out.',
+        variant: 'destructive',
+      })
     }
   }
 

@@ -5,11 +5,13 @@ import { signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
 
 export default function SignIn() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const { toast } = useToast()
 
   useEffect(() => {
     if (!auth) {
@@ -30,7 +32,11 @@ export default function SignIn() {
 
   const handleGoogleSignIn = async () => {
     if (!auth) {
-      alert('Firebase is not configured. Please set up your environment variables.')
+      toast({
+        title: 'Configuration Error',
+        description: 'Firebase is not configured. Please set up your environment variables.',
+        variant: 'destructive',
+      })
       return
     }
     
@@ -41,12 +47,20 @@ export default function SignIn() {
       if (result.user.email === 'iamaaritmalhotra@gmail.com') {
         router.push('/student-stats')
       } else {
-        alert('Access denied. Only authorized users can access this page.')
+        toast({
+          title: 'Access Denied',
+          description: 'Only authorized users can access this page.',
+          variant: 'destructive',
+        })
         await auth.signOut()
       }
     } catch (error) {
       console.error('Error signing in:', error)
-      alert('Failed to sign in. Please try again.')
+      toast({
+        title: 'Sign In Failed',
+        description: 'Failed to sign in. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 
