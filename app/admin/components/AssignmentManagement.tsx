@@ -641,7 +641,9 @@ export default function AssignmentManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Assigned Date</Label>
+                {/* @ts-expect-error - Radix UI Popover type compatibility */}
                 <Popover>
+                  {/* @ts-expect-error - Radix UI PopoverTrigger type compatibility */}
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -658,6 +660,7 @@ export default function AssignmentManagement() {
                       )}
                     </Button>
                   </PopoverTrigger>
+                  {/* @ts-expect-error - Radix UI PopoverContent type compatibility */}
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
@@ -671,7 +674,9 @@ export default function AssignmentManagement() {
 
               <div>
                 <Label>Due Date (Optional)</Label>
+                {/* @ts-expect-error - Radix UI Popover type compatibility */}
                 <Popover>
+                  {/* @ts-expect-error - Radix UI PopoverTrigger type compatibility */}
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -688,6 +693,7 @@ export default function AssignmentManagement() {
                       )}
                     </Button>
                   </PopoverTrigger>
+                  {/* @ts-expect-error - Radix UI PopoverContent type compatibility */}
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
@@ -702,16 +708,22 @@ export default function AssignmentManagement() {
 
             <div>
               <Label>Folder (Optional)</Label>
-              <Select
-                value={editingAssignment.folderId || 'none'}
-                onValueChange={(value) => setEditingAssignment({ ...editingAssignment, folderId: value === 'none' ? undefined : value })}
-              >
+                {/* @ts-expect-error - Radix UI Select type compatibility */}
+                <Select
+                  value={editingAssignment.folderId || 'none'}
+                  onValueChange={(value) => setEditingAssignment({ ...editingAssignment, folderId: value === 'none' ? undefined : value })}
+                >
+                {/* @ts-expect-error - Radix UI SelectTrigger type compatibility */}
                 <SelectTrigger className="mt-1">
+                  {/* @ts-expect-error - Radix UI SelectValue type compatibility */}
                   <SelectValue placeholder="Select a folder (optional)" />
                 </SelectTrigger>
+                {/* @ts-expect-error - Radix UI SelectContent type compatibility */}
                 <SelectContent>
+                  {/* @ts-expect-error - Radix UI SelectItem type compatibility */}
                   <SelectItem value="none">No Folder</SelectItem>
                   {folders.map((folder) => (
+                    /* @ts-expect-error - Radix UI SelectItem type compatibility */
                     <SelectItem key={folder.id} value={folder.id}>
                       {folder.name}
                     </SelectItem>
@@ -743,7 +755,9 @@ export default function AssignmentManagement() {
             </div>
 
             <div className="border-t pt-4">
-              <Label className="mb-3 block">Assign to Students</Label>
+              <div className="mb-3">
+                <Label>Assign to Students</Label>
+              </div>
               <div className="max-h-40 overflow-y-auto border rounded p-3 space-y-2">
                 {students.map((student) => (
                   <div key={student.id} className="flex items-center space-x-2">

@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { doc, getDoc, updateDoc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { onAuthStateChanged } from 'firebase/auth'
+import { db, auth } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { 
@@ -324,19 +325,21 @@ export default function TakeTestPage() {
 
   // Get student name from auth
   useEffect(() => {
-    import('firebase/auth').then(({ onAuthStateChanged, auth }) => {
-      onAuthStateChanged(auth, (user) => {
-        if (user?.displayName) {
-          setStudentName(user.displayName)
-        } else if (user?.email) {
-          const emailParts = user.email.split('@')[0].split(/[._-]/)
-          const formattedName = emailParts.map((part: string) => 
-            part.charAt(0).toUpperCase() + part.slice(1)
-          ).join(' ')
-          setStudentName(formattedName || 'Student')
-        }
-      })
+    if (!auth) return
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user?.displayName) {
+        setStudentName(user.displayName)
+      } else if (user?.email) {
+        const emailParts = user.email.split('@')[0].split(/[._-]/)
+        const formattedName = emailParts.map((part: string) => 
+          part.charAt(0).toUpperCase() + part.slice(1)
+        ).join(' ')
+        setStudentName(formattedName || 'Student')
+      }
     })
+    
+    return () => unsubscribe()
   }, [])
 
   // Close menu when clicking outside
