@@ -26,7 +26,7 @@ interface Question {
   readingPassage?: string
   options: string[]
   correctAnswer: number
-  module: number
+  module?: number // Optional - assignments don't use modules
   section: 'english' | 'math'
   questionType?: 'multiple-choice' | 'open-ended'
 }
