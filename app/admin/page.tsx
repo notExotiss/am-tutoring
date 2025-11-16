@@ -117,6 +117,10 @@ export default function AdminPanel() {
               <FileText className="w-4 h-4 mr-2" />
               Tests
             </TabsTrigger>
+            <TabsTrigger value="folders">
+              <Folder className="w-4 h-4 mr-2" />
+              Folders
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="students">
