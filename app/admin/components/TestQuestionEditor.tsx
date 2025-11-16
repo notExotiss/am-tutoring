@@ -264,7 +264,7 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
 
           {/* Question Text Editor */}
           <div className="border rounded p-2 min-h-[100px]">
-            {/* @ts-expect-error - Tiptap EditorContent type compatibility */}
+            {/* @ts-ignore - Tiptap EditorContent type compatibility */}
             <EditorContent editor={questionEditor} />
           </div>
           <p className="text-xs text-gray-500 mt-1">
