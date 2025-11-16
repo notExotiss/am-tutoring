@@ -396,20 +396,25 @@ export default function TestManagement() {
 
   const addQuestion = () => {
     if (!editingTest) return
+    // Determine module and section from activeModule
+    const moduleSection = activeModule.startsWith('english') ? 'english' : 'math'
+    const moduleNumber = activeModule === 'english-m1' || activeModule === 'math-m1' ? 1 : 2
+    
     const newQuestion: Question = {
       id: `q-${Date.now()}`,
       questionText: '',
       options: ['', '', '', ''],
       correctAnswer: 0,
-      module: 1,
-      section: 'english',
+      module: moduleNumber,
+      section: moduleSection,
       questionType: 'multiple-choice',
     }
+    const newQuestions = [...editingTest.questions, newQuestion]
     setEditingTest({
       ...editingTest,
-      questions: [...editingTest.questions, newQuestion],
+      questions: newQuestions,
     })
-    setCurrentQuestionIndex(editingTest.questions.length)
+    setCurrentQuestionIndex(newQuestions.length - 1)
   }
 
   const toggleStudent = (studentId: string) => {
@@ -737,7 +742,7 @@ export default function TestManagement() {
                   
                   return (
                     <TabsContent key={module} value={module} className="mt-4">
-                      <div className="grid grid-cols-9 gap-0 mb-6">
+                      <div className="grid grid-cols-9 mb-6" style={{ gap: 0, columnGap: 0, rowGap: 0 }}>
                         {Array.from({ length: 27 }, (_, idx) => {
                           const question = moduleQuestions[idx]
                           const globalIndex = question ? editingTest.questions.findIndex(qu => qu.id === question.id) : -1
@@ -750,18 +755,22 @@ export default function TestManagement() {
                                   setCurrentQuestionIndex(globalIndex)
                                 } else {
                                   // Create new question for this position
+                                  const moduleSection = module.startsWith('english') ? 'english' : 'math'
+                                  const moduleNumber = module === 'english-m1' || module === 'math-m1' ? 1 : 2
                                   const newQuestion: Question = {
                                     id: `q-${Date.now()}-${idx}`,
                                     questionText: '',
                                     options: ['', '', '', ''],
                                     correctAnswer: 0,
-                                    module: module === 'english-m1' ? 1 : module === 'english-m2' ? 2 : module === 'math-m1' ? 1 : 2,
-                                    section: (module.startsWith('english') ? 'english' : 'math') as 'english' | 'math',
+                                    module: moduleNumber,
+                                    section: moduleSection,
                                     questionType: 'multiple-choice' as const,
                                   }
                                   const allQuestions = [...editingTest.questions, newQuestion]
                                   setEditingTest({ ...editingTest, questions: allQuestions })
-                                  setCurrentQuestionIndex(allQuestions.length - 1)
+                                  // Find the index of the newly created question
+                                  const newIndex = allQuestions.findIndex(q => q.id === newQuestion.id)
+                                  setCurrentQuestionIndex(newIndex)
                                 }
                               }}
                               className={`flex items-center justify-center text-sm font-medium transition-all ${
@@ -775,6 +784,8 @@ export default function TestManagement() {
                                 height: '40px',
                                 borderWidth: isSelected ? '2px' : '1px',
                                 borderColor: isSelected ? '#000000' : '#d1d5db',
+                                margin: 0,
+                                padding: 0,
                               }}
                               title={question ? `Question ${idx + 1}${question.questionText ? ' (Has content)' : ' (Empty)'}` : `Question ${idx + 1} (Click to create)`}
                             >
