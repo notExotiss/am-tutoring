@@ -101,9 +101,9 @@ service cloud.firestore {
 
 If you prefer a simpler setup for testing, use the simplified version below:
 
-**Simplified Version (Less Secure, for Testing):**
+**Simplified Version (RECOMMENDED FOR NOW - Use This First):**
 
-For easier testing, you can use this simpler version that allows all authenticated users to read/write:
+For easier testing and to get things working immediately, use this simpler version that allows all authenticated users to read/write:
 
 ```javascript
 rules_version = '2';
@@ -116,7 +116,13 @@ service cloud.firestore {
 }
 ```
 
-**Note:** The simplified version is less secure and should only be used for testing. For production, use the more restrictive rules above.
+**IMPORTANT:** 
+1. **Use the simplified version above FIRST** to get things working
+2. Go to Firebase Console > Firestore Database > Rules tab
+3. Copy and paste the simplified rules above
+4. Click "Publish"
+5. This will allow all authenticated users to read/write, which will let students see their assignments and tests
+6. Once everything is working, you can switch to the more restrictive rules above (but make sure all assignments/tests have `studentEmails` field first)
 
 **To Update Security Rules:**
 1. Go to Firebase Console > Firestore Database
