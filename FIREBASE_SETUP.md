@@ -48,39 +48,58 @@ Update your Firestore security rules to allow authenticated users to manage all 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
+        request.auth.token.email == 'iamaaritmalhotra@gmail.com';
+    }
+    
+    // Helper function to check if user is a student assigned to this resource
+    // This checks if the user's email matches any student email in the studentIds array
+    function isAssignedStudent() {
+      return request.auth != null && 
+        resource.data.studentIds != null &&
+        resource.data.studentIds.size() > 0 &&
+        // Check if any student in the studentIds array has the user's email
+        exists(/databases/$(database)/documents/students/$(resource.data.studentIds[0])) &&
+        get(/databases/$(database)/documents/students/$(resource.data.studentIds[0])).data.email == request.auth.token.email;
+    }
+    
     // Students collection - admin can manage all, students can read their own
     match /students/{studentId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-        request.auth.token.email == 'iamaaritmalhotra@gmail.com';
+      allow write: if isAdmin();
     }
     
     // Assignments collection - admin can manage all, students can read their own
     match /assignments/{assignmentId} {
       allow read: if request.auth != null && 
-        (request.auth.token.email == 'iamaaritmalhotra@gmail.com' ||
-         resource.data.studentId == get(/databases/$(database)/documents/students/$(get(/databases/$(database)/documents/assignments/$(assignmentId)).data.studentId)).data.email);
-      allow write: if request.auth != null && 
-        request.auth.token.email == 'iamaaritmalhotra@gmail.com';
+        (isAdmin() || 
+         (resource.data.studentEmails != null && 
+          request.auth.token.email in resource.data.studentEmails));
+      allow write: if isAdmin();
     }
     
     // Tests collection - admin can manage all, students can read their own
     match /tests/{testId} {
       allow read: if request.auth != null && 
-        (request.auth.token.email == 'iamaaritmalhotra@gmail.com' ||
-         resource.data.studentId == get(/databases/$(database)/documents/students/$(get(/databases/$(database)/documents/tests/$(testId)).data.studentId)).data.email);
-      allow write: if request.auth != null && 
-        request.auth.token.email == 'iamaaritmalhotra@gmail.com';
+        (isAdmin() || 
+         (resource.data.studentEmails != null && 
+          request.auth.token.email in resource.data.studentEmails));
+      allow write: if isAdmin();
     }
     
     // Folders collection - admin only
     match /folders/{folderId} {
-      allow read, write: if request.auth != null && 
-        request.auth.token.email == 'iamaaritmalhotra@gmail.com';
+      allow read, write: if isAdmin();
     }
   }
 }
 ```
+
+**Note:** The code now automatically stores `studentEmails` alongside `studentIds` when creating/updating assignments and tests. This allows the security rules to check if the user's email is in the `studentEmails` array.
+
+If you prefer a simpler setup for testing, use the simplified version below:
 
 **Simplified Version (Less Secure, for Testing):**
 

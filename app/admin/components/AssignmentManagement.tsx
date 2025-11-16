@@ -312,16 +312,25 @@ export default function AssignmentManagement() {
     }
 
     try {
+      // Remove computed fields (folderName, studentNames) before saving
+      const { folderName, studentNames, ...cleanAssignment } = editingAssignment
+      // Get student emails for security rules
+      const studentEmails = (cleanAssignment.studentIds || []).map((sid: string) => {
+        const student = students.find(s => s.id === sid)
+        return student?.email || ''
+      }).filter((email: string) => email !== '')
+      
       const assignmentData = {
-        title: editingAssignment.title,
-        description: editingAssignment.description,
-        studentIds: editingAssignment.studentIds || [],
-        folderId: editingAssignment.folderId || null,
-        dueDate: editingAssignment.dueDate || null,
-        assignedDate: editingAssignment.assignedDate || new Date(),
-        questions: editingAssignment.questions || [],
-        timeLimitEnabled: editingAssignment.timeLimitEnabled || false,
-        timeLimit: editingAssignment.timeLimit || 0,
+        title: cleanAssignment.title,
+        description: cleanAssignment.description,
+        studentIds: cleanAssignment.studentIds || [],
+        studentEmails: studentEmails, // Store emails for security rules
+        folderId: cleanAssignment.folderId || null,
+        dueDate: cleanAssignment.dueDate || null,
+        assignedDate: cleanAssignment.assignedDate || new Date(),
+        questions: cleanAssignment.questions || [],
+        timeLimitEnabled: cleanAssignment.timeLimitEnabled || false,
+        timeLimit: cleanAssignment.timeLimit || 0,
         completed: false,
       }
 
@@ -429,9 +438,18 @@ export default function AssignmentManagement() {
           const assignmentRef = doc(db, 'assignments', assignment.id)
           const currentStudentIds = assignment.studentIds || []
           const newStudentIds = Array.from(new Set([...currentStudentIds, ...studentIds]))
+          // Remove computed fields before saving
+          const { folderName, studentNames, ...assignmentData } = assignment
+          // Get student emails for security rules
+          const studentEmails = newStudentIds.map((sid: string) => {
+            const student = students.find(s => s.id === sid)
+            return student?.email || ''
+          }).filter((email: string) => email !== '')
+          
           await setDoc(assignmentRef, {
-            ...assignment,
+            ...assignmentData,
             studentIds: newStudentIds,
+            studentEmails: studentEmails, // Store emails for security rules
           } as any)
         }
       }
@@ -476,8 +494,17 @@ export default function AssignmentManagement() {
     if (targetFolder || isUnassigned) {
       try {
         const assignmentRef = doc(db, 'assignments', assignmentId)
+        // Remove folderName and other computed fields before saving
+        const { folderName, studentNames, ...assignmentData } = assignment
+        // Get student emails for security rules
+        const studentEmails = (assignmentData.studentIds || []).map((sid: string) => {
+          const student = students.find(s => s.id === sid)
+          return student?.email || ''
+        }).filter((email: string) => email !== '')
+        
         await setDoc(assignmentRef, {
-          ...assignment,
+          ...assignmentData,
+          studentEmails: studentEmails, // Store emails for security rules
           folderId: isUnassigned ? null : targetFolder?.id || null,
         } as any)
 

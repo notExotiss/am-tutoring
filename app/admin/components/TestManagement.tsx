@@ -253,10 +253,17 @@ export default function TestManagement() {
         testToSave = initializeQuestions(testToSave)
       }
 
+      // Get student emails for security rules
+      const studentEmails = (testToSave.studentIds || []).map((sid: string) => {
+        const student = students.find(s => s.id === sid)
+        return student?.email || ''
+      }).filter((email: string) => email !== '')
+      
       const testData = {
         title: testToSave.title,
         description: testToSave.description,
         studentIds: testToSave.studentIds || [],
+        studentEmails: studentEmails, // Store emails for security rules
         dueDate: testToSave.dueDate || null,
         assignedDate: testToSave.assignedDate || new Date(),
         questions: testToSave.questions,
