@@ -698,8 +698,26 @@ export default function TestManagement() {
             </CardHeader>
             <CardContent>
               <Tabs value={activeModule} onValueChange={(value: string) => {
-                setActiveModule(value as 'english-m1' | 'english-m2' | 'math-m1' | 'math-m2')
-                setCurrentQuestionIndex(0)
+                const newModule = value as 'english-m1' | 'english-m2' | 'math-m1' | 'math-m2'
+                setActiveModule(newModule)
+                // Find first question in the new module, or keep current if it's in the new module
+                const moduleSection = newModule.startsWith('english') ? 'english' : 'math'
+                const moduleNumber = newModule === 'english-m1' || newModule === 'math-m1' ? 1 : 2
+                const currentQ = editingTest.questions[currentQuestionIndex]
+                if (currentQ && currentQ.section === moduleSection && currentQ.module === moduleNumber) {
+                  // Current question is in the new module, keep it
+                  // Don't change currentQuestionIndex
+                } else {
+                  // Find first question in new module
+                  const firstQuestionIndex = editingTest.questions.findIndex(q => 
+                    q.section === moduleSection && q.module === moduleNumber
+                  )
+                  if (firstQuestionIndex >= 0) {
+                    setCurrentQuestionIndex(firstQuestionIndex)
+                  } else {
+                    setCurrentQuestionIndex(0)
+                  }
+                }
               }}>
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="english-m1">English Module 1</TabsTrigger>
@@ -719,7 +737,7 @@ export default function TestManagement() {
                   
                   return (
                     <TabsContent key={module} value={module} className="mt-4">
-                      <div className="grid grid-cols-9 gap-0.5 mb-6">
+                      <div className="grid grid-cols-9 gap-0 mb-6">
                         {Array.from({ length: 27 }, (_, idx) => {
                           const question = moduleQuestions[idx]
                           const globalIndex = question ? editingTest.questions.findIndex(qu => qu.id === question.id) : -1
@@ -762,13 +780,21 @@ export default function TestManagement() {
                         })}
                       </div>
                       
-                      {currentQuestion && editingTest.questions[currentQuestionIndex] && (
-                        <TestQuestionEditor
-                          question={currentQuestion}
-                          onUpdate={(updated) => updateQuestion(currentQuestion.id, updated)}
-                          onDelete={() => deleteQuestion(currentQuestion.id)}
-                        />
-                      )}
+                      {(() => {
+                        const currentQ = editingTest.questions[currentQuestionIndex]
+                        // Only show editor if current question is in this module
+                        if (currentQ && currentQ.section === module.split('-')[0] && currentQ.module === parseInt(module.split('-')[1])) {
+                          return (
+                            <TestQuestionEditor
+                              key={currentQ.id}
+                              question={currentQ}
+                              onUpdate={(updated) => updateQuestion(currentQ.id, updated)}
+                              onDelete={() => deleteQuestion(currentQ.id)}
+                            />
+                          )
+                        }
+                        return null
+                      })()}
                     </TabsContent>
                   )
                 })}

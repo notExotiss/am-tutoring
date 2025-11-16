@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import 'katex/dist/katex.min.css'
+import katex from 'katex'
 // @ts-ignore - react-draggable Draggable type compatibility
 import Draggable from 'react-draggable'
 
@@ -65,6 +66,7 @@ export default function TakeAssignmentPage() {
   const [crossedOutOptions, setCrossedOutOptions] = useState<Record<string, Set<number>>>({})
   const [openEndedAnswers, setOpenEndedAnswers] = useState<Record<string, string>>({})
   const [showCrossOutOptions, setShowCrossOutOptions] = useState(false)
+  const [highlightToRemove, setHighlightToRemove] = useState<{questionId: string, highlightId: string, position: {top: number, left: number}} | null>(null)
   const [highlights, setHighlights] = useState<Record<string, Array<{start: number, end: number, id: string}>>>({})
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [showReviewPage, setShowReviewPage] = useState(false)
@@ -496,9 +498,27 @@ export default function TakeAssignmentPage() {
         mark.style.cursor = 'pointer'
         mark.setAttribute('data-highlight-id', highlight.id)
         mark.setAttribute('data-question-id', questionId)
+        mark.onmouseenter = (e) => {
+          const target = e.target as HTMLElement
+          if (target.tagName === 'MARK') {
+            const rect = target.getBoundingClientRect()
+            setHighlightToRemove({ 
+              questionId, 
+              highlightId: highlight.id,
+              position: {
+                top: rect.top - 40,
+                left: rect.left + (rect.width / 2)
+              }
+            })
+          }
+        }
+        mark.onmouseleave = () => {
+          setHighlightToRemove(null)
+        }
         mark.onclick = (e) => {
           e.stopPropagation()
           removeHighlight(questionId, highlight.id)
+          setHighlightToRemove(null)
         }
         
         try {
@@ -512,6 +532,32 @@ export default function TakeAssignmentPage() {
     })
     
     return tempDiv.innerHTML
+  }
+
+  // Process math expressions in text (replace $...$ with KaTeX)
+  const processMathInText = (text: string): string => {
+    if (!text) return text
+    // Process inline math: $...$
+    const inlineMathRegex = /\$([^$]+)\$/g
+    let processed = text.replace(inlineMathRegex, (match, formula) => {
+      try {
+        return katex.renderToString(formula.trim(), { throwOnError: false, displayMode: false })
+      } catch (e) {
+        return match
+      }
+    })
+    
+    // Process display math: $$...$$
+    const displayMathRegex = /\$\$([^$]+)\$\$/g
+    processed = processed.replace(displayMathRegex, (match, formula) => {
+      try {
+        return katex.renderToString(formula.trim(), { throwOnError: false, displayMode: true })
+      } catch (e) {
+        return match
+      }
+    })
+    
+    return processed
   }
 
   useEffect(() => {
@@ -586,6 +632,43 @@ export default function TakeAssignmentPage() {
               </Button>
             </div>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show unscheduled break UI when paused
+  if (isPaused && assignmentState === 'in-progress') {
+    return (
+      <div className="min-h-screen bg-[#2a2a2a] flex flex-col text-white relative">
+        <div className="flex-1 flex items-center justify-between p-12">
+          {/* Left side - Timer */}
+          <div className="flex-1 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-8 text-center">
+              <div className="text-gray-900 text-lg font-semibold mb-2">Time Remaining:</div>
+              <div className="text-gray-900 text-5xl font-bold">{formatTime(timeRemaining)}</div>
+            </div>
+          </div>
+          
+          {/* Right side - Instructions */}
+          <div className="flex-1 pl-12">
+            <h1 className="text-3xl font-bold mb-6">Unscheduled Break</h1>
+            <ul className="list-disc list-inside space-y-3 text-lg mb-8">
+              <li>If you&apos;re testing with a laptop, don&apos;t close it.</li>
+              <li>If time runs out while you&apos;re on break, your assignment will be submitted automatically.</li>
+            </ul>
+            <Button 
+              onClick={() => setIsPaused(false)}
+              className="bg-[#ffd23f] hover:bg-[#ffc800] text-black px-8 py-3 text-lg font-semibold rounded-lg"
+            >
+              Resume Testing
+            </Button>
+          </div>
+        </div>
+        
+        {/* Student name at bottom left */}
+        <div className="absolute bottom-4 left-4 text-white text-sm">
+          {studentName}
         </div>
       </div>
     )
@@ -876,6 +959,27 @@ export default function TakeAssignmentPage() {
                   __html: renderPassageWithHighlights(currentQuestion.readingPassage || '', currentQuestion.id)
                 }}
               />
+              {/* Highlight removal popup */}
+              {highlightToRemove && highlightToRemove.questionId === currentQuestion.id && (
+                <div 
+                  className="fixed bg-white border border-gray-300 rounded shadow-lg p-2 z-50 pointer-events-auto"
+                  style={{
+                    top: `${highlightToRemove.position.top}px`,
+                    left: `${highlightToRemove.position.left}px`,
+                    transform: 'translateX(-50%)'
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      removeHighlight(highlightToRemove.questionId, highlightToRemove.highlightId)
+                      setHighlightToRemove(null)
+                    }}
+                    className="text-xs text-red-600 hover:text-red-800 px-2 py-1 whitespace-nowrap"
+                  >
+                    Remove Highlight
+                  </button>
+                </div>
+              )}
             </div>
             
             <div
@@ -950,7 +1054,7 @@ export default function TakeAssignmentPage() {
             isEnglish && currentQuestion?.readingPassage ? 'flex-1' : 
             'w-full'
           }`}
-          style={isMath && !isOpenEnded && showCalculator ? { marginRight: '850px', maxWidth: 'calc(100% - 850px)' } : {}}
+          style={isMath && !isOpenEnded && showCalculator ? { marginLeft: '850px', maxWidth: 'calc(100% - 850px)' } : {}}
         >
           {!currentQuestion ? (
             <div className="text-center py-12">
@@ -987,7 +1091,7 @@ export default function TakeAssignmentPage() {
               <div
                 className="prose max-w-none mb-6"
                 style={{ fontFamily: 'var(--font-noto-serif), serif' }}
-                dangerouslySetInnerHTML={{ __html: currentQuestion.questionText }}
+                dangerouslySetInnerHTML={{ __html: processMathInText(currentQuestion.questionText) }}
               />
 
                {currentQuestion.questionImage && (
@@ -1038,8 +1142,11 @@ export default function TakeAssignmentPage() {
                              onChange={() => setAnswers({ ...answers, [currentQuestion.id]: index })}
                              className="sr-only"
                            />
-                           <span className="font-semibold w-8 text-lg flex-shrink-0">{String.fromCharCode(65 + index)}</span>
-                           <span className={`flex-1 ${isCrossedOut ? 'line-through' : ''}`}>{option}</span>
+                          <span className="font-semibold w-8 text-lg flex-shrink-0">{String.fromCharCode(65 + index)}</span>
+                          <span 
+                            className={`flex-1 ${isCrossedOut ? 'line-through' : ''}`}
+                            dangerouslySetInnerHTML={{ __html: processMathInText(option) }}
+                          />
                          </div>
                          {isEnglish && showCrossOutOptions && (
                            <button
@@ -1188,7 +1295,7 @@ export default function TakeAssignmentPage() {
       {showReferenceSheet && (
         // @ts-ignore - react-draggable Draggable type compatibility
         <Draggable handle=".drag-handle" bounds="parent">
-          <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-96 max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-[900px] max-h-[90vh] overflow-hidden flex flex-col">
             <div className="bg-gray-100 px-4 py-2 flex items-center justify-between drag-handle cursor-move border-b">
               <span className="font-semibold text-sm">REFERENCE</span>
               <button
@@ -1212,7 +1319,7 @@ export default function TakeAssignmentPage() {
       {showCalculator && (
         // @ts-ignore - react-draggable Draggable type compatibility
         <Draggable handle=".drag-handle" bounds="parent">
-          <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-[600px] h-[500px] flex flex-col">
+          <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-[900px] max-h-[90vh] overflow-hidden flex flex-col">
             <div className="bg-gray-100 px-4 py-2 flex items-center justify-between drag-handle cursor-move border-b">
               <span className="font-semibold text-sm">Calculator</span>
               <button

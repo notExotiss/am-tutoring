@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Bold, Italic, Underline as UnderlineIcon, Image as ImageIcon, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import 'katex/dist/katex.min.css'
 
 interface Question {
@@ -49,9 +49,10 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
     ],
     content: question.questionText,
     onUpdate: ({ editor }) => {
+      const currentContent = editor.getHTML()
       onUpdate({
         ...question,
-        questionText: editor.getHTML(),
+        questionText: currentContent,
       })
     },
   })
@@ -68,12 +69,46 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
     ],
     content: question.readingPassage || '',
     onUpdate: ({ editor }) => {
+      const currentContent = editor.getHTML()
       onUpdate({
         ...question,
-        readingPassage: editor.getHTML(),
+        readingPassage: currentContent,
       })
     },
   })
+
+  // Update editors when question prop changes (only if content is different to avoid loops)
+  useEffect(() => {
+    if (questionEditor) {
+      const currentContent = questionEditor.getHTML()
+      const newContent = question.questionText || ''
+      // Only update if content is actually different
+      if (currentContent !== newContent) {
+        questionEditor.commands.setContent(newContent, { emitUpdate: false })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [question.id, question.questionText])
+
+  useEffect(() => {
+    if (passageEditor) {
+      const currentContent = passageEditor.getHTML()
+      const newContent = question.readingPassage || ''
+      // Only update if content is actually different
+      if (currentContent !== newContent) {
+        passageEditor.commands.setContent(newContent, { emitUpdate: false })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [question.id, question.readingPassage])
+
+  useEffect(() => {
+    setImageUrl(question.questionImage || '')
+  }, [question.questionImage])
+
+  useEffect(() => {
+    setShowReadingPassageEditor(!!question.readingPassage)
+  }, [question.readingPassage])
 
   const addImage = () => {
     if (imageUrl) {

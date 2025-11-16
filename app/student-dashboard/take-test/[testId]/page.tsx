@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import 'katex/dist/katex.min.css'
+import katex from 'katex'
 import Draggable, { DraggableData, DraggableEvent } from 'react-draggable'
 
 interface Question {
@@ -68,7 +69,7 @@ export default function TakeTestPage() {
   const [isDraggingDivider, setIsDraggingDivider] = useState(false)
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Set<string>>(new Set())
   const [showCrossOutOptions, setShowCrossOutOptions] = useState(false)
-  const [highlightToRemove, setHighlightToRemove] = useState<{questionId: string, highlightId: string} | null>(null)
+  const [highlightToRemove, setHighlightToRemove] = useState<{questionId: string, highlightId: string, position: {top: number, left: number}} | null>(null)
   const [crossedOutOptions, setCrossedOutOptions] = useState<Record<string, Set<number>>>({})
   const [openEndedAnswers, setOpenEndedAnswers] = useState<Record<string, string>>({})
   const [highlights, setHighlights] = useState<Record<string, Array<{start: number, end: number, id: string}>>>({})
@@ -590,7 +591,15 @@ export default function TakeTestPage() {
         mark.onmouseenter = (e) => {
           const target = e.target as HTMLElement
           if (target.tagName === 'MARK') {
-            setHighlightToRemove({ questionId, highlightId: highlight.id })
+            const rect = target.getBoundingClientRect()
+            setHighlightToRemove({ 
+              questionId, 
+              highlightId: highlight.id,
+              position: {
+                top: rect.top - 40,
+                left: rect.left + (rect.width / 2)
+              }
+            })
           }
         }
         mark.onmouseleave = () => {
@@ -614,6 +623,32 @@ export default function TakeTestPage() {
     })
     
     return tempDiv.innerHTML
+  }
+
+  // Process math expressions in text (replace $...$ with KaTeX)
+  const processMathInText = (text: string): string => {
+    if (!text) return text
+    // Process inline math: $...$
+    const inlineMathRegex = /\$([^$]+)\$/g
+    let processed = text.replace(inlineMathRegex, (match, formula) => {
+      try {
+        return katex.renderToString(formula.trim(), { throwOnError: false, displayMode: false })
+      } catch (e) {
+        return match
+      }
+    })
+    
+    // Process display math: $$...$$
+    const displayMathRegex = /\$\$([^$]+)\$\$/g
+    processed = processed.replace(displayMathRegex, (match, formula) => {
+      try {
+        return katex.renderToString(formula.trim(), { throwOnError: false, displayMode: true })
+      } catch (e) {
+        return match
+      }
+    })
+    
+    return processed
   }
 
   // Expose removeHighlight to window for inline onclick handlers
@@ -717,29 +752,37 @@ export default function TakeTestPage() {
 
   if (testState === 'break') {
     return (
-      <div className="min-h-screen bg-white flex flex-col">
-        {/* Header */}
-        <header className="bg-[#1a1f3a] text-white px-6 py-3">
-          <h2 className="text-sm font-semibold">Break</h2>
-        </header>
-        
+      <div className="min-h-screen bg-[#2a2a2a] flex flex-col text-white">
         {/* Break Content */}
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="max-w-2xl w-full text-center">
-            <h1 className="text-3xl font-bold mb-4 text-gray-900">Break Time</h1>
-            <p className="text-lg mb-6 text-gray-600">
-              Take a {test.breakTime || 10} minute break before starting the Math section.
+        <div className="flex-1 flex items-center justify-between p-12">
+          {/* Left side - Timer */}
+          <div className="flex-1 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-8 text-center">
+              <div className="text-gray-900 text-lg font-semibold mb-2">Remaining Break Time:</div>
+              <div className="text-gray-900 text-5xl font-bold">{formatTime(timeRemaining)}</div>
+            </div>
+          </div>
+          
+          {/* Right side - Instructions */}
+          <div className="flex-1 pl-12">
+            <h1 className="text-3xl font-bold mb-6">Take a Break: Do Not<br />Close Your Device</h1>
+            <p className="text-lg mb-8">
+              After the break, a <strong>Resume Testing Now</strong> button will appear and you&apos;ll start the next section.
             </p>
-            {test.timeLimitEnabled && (
-              <div className="text-2xl font-bold text-blue-600 mb-6">
-                Time Remaining: {formatTime(timeRemaining)}
-              </div>
-            )}
-            <Button 
-              onClick={() => {
-                if (test.timeLimitEnabled && timeRemaining > 0) {
-                  if (confirm('Are you sure you want to skip the break? You still have time remaining.')) {
-                    // Skip break directly without review page
+            <div className="mb-8">
+              <h2 className="text-xl font-bold mb-4">Follow these rules during the break:</h2>
+              <ol className="list-decimal list-inside space-y-2 text-lg">
+                <li>Do not disturb students who are still testing.</li>
+                <li>Do not exit the app or close your laptop.</li>
+                <li>Do not access phones, smartwatches, textbooks, notes, or the internet.</li>
+                <li>Do not eat or drink near any testing device.</li>
+                <li>Do not speak in the test room; outside the test room, do not discuss the exam with anyone.</li>
+              </ol>
+            </div>
+            {timeRemaining <= 0 && (
+              <Button 
+                onClick={() => {
+                  if (confirm('Are you sure you want to resume testing?')) {
                     setTestState('math-m1')
                     const mathM1Time = test?.mathModule1Time || 35
                     if (test?.timeLimitEnabled) setTimeRemaining(mathM1Time * 60)
@@ -747,26 +790,18 @@ export default function TakeTestPage() {
                     setIsPaused(false)
                     setShowReviewPage(false)
                   }
-                } else {
-                  // Skip break directly without review page
-                  setTestState('math-m1')
-                  const mathM1Time = test?.mathModule1Time || 35
-                  if (test?.timeLimitEnabled) setTimeRemaining(mathM1Time * 60)
-                  setCurrentQuestionIndex(0)
-                  setIsPaused(false)
-                  setShowReviewPage(false)
-                }
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
-            >
-              {test.timeLimitEnabled && timeRemaining > 0 ? 'Skip Break' : 'Start Math Section'}
-            </Button>
-            {test.timeLimitEnabled && timeRemaining > 0 && (
-              <p className="text-sm text-gray-500 mt-4">
-                You can skip the break if you&apos;re ready to continue.
-              </p>
+                }}
+                className="bg-[#ffd23f] hover:bg-[#ffc800] text-black px-8 py-3 text-lg font-semibold rounded-lg"
+              >
+                Resume Testing Now
+              </Button>
             )}
           </div>
+        </div>
+        
+        {/* Student name at bottom left */}
+        <div className="absolute bottom-4 left-4 text-white text-sm">
+          {studentName}
         </div>
       </div>
     )
@@ -868,6 +903,43 @@ export default function TakeTestPage() {
               </Button>
             </div>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show unscheduled break UI when paused
+  if (isPaused && (testState === 'english-m1' || testState === 'english-m2' || testState === 'math-m1' || testState === 'math-m2')) {
+    return (
+      <div className="min-h-screen bg-[#2a2a2a] flex flex-col text-white relative">
+        <div className="flex-1 flex items-center justify-between p-12">
+          {/* Left side - Timer */}
+          <div className="flex-1 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-8 text-center">
+              <div className="text-gray-900 text-lg font-semibold mb-2">Time Remaining in Module:</div>
+              <div className="text-gray-900 text-5xl font-bold">{formatTime(timeRemaining)}</div>
+            </div>
+          </div>
+          
+          {/* Right side - Instructions */}
+          <div className="flex-1 pl-12">
+            <h1 className="text-3xl font-bold mb-6">Unscheduled Break</h1>
+            <ul className="list-disc list-inside space-y-3 text-lg mb-8">
+              <li>If you&apos;re testing with a laptop, don&apos;t close it.</li>
+              <li>If this module ends while you&apos;re on break, you&apos;ll be taken to the next module.</li>
+            </ul>
+            <Button 
+              onClick={() => setIsPaused(false)}
+              className="bg-[#ffd23f] hover:bg-[#ffc800] text-black px-8 py-3 text-lg font-semibold rounded-lg"
+            >
+              Resume Testing
+            </Button>
+          </div>
+        </div>
+        
+        {/* Student name at bottom left */}
+        <div className="absolute bottom-4 left-4 text-white text-sm">
+          {studentName}
         </div>
       </div>
     )
@@ -1079,10 +1151,10 @@ export default function TakeTestPage() {
                 {/* Highlight removal popup */}
                 {highlightToRemove && highlightToRemove.questionId === currentQuestion.id && (
                   <div 
-                    className="absolute bg-white border border-gray-300 rounded shadow-lg p-2 z-50"
+                    className="fixed bg-white border border-gray-300 rounded shadow-lg p-2 z-50 pointer-events-auto"
                     style={{
-                      top: '-40px',
-                      left: '50%',
+                      top: `${highlightToRemove.position.top}px`,
+                      left: `${highlightToRemove.position.left}px`,
                       transform: 'translateX(-50%)'
                     }}
                   >
@@ -1091,7 +1163,7 @@ export default function TakeTestPage() {
                         removeHighlight(highlightToRemove.questionId, highlightToRemove.highlightId)
                         setHighlightToRemove(null)
                       }}
-                      className="text-xs text-red-600 hover:text-red-800 px-2 py-1"
+                      className="text-xs text-red-600 hover:text-red-800 px-2 py-1 whitespace-nowrap"
                     >
                       Remove Highlight
                     </button>
@@ -1174,7 +1246,7 @@ export default function TakeTestPage() {
             isEnglish && currentQuestion?.readingPassage ? 'flex-1' : 
             'w-full'
           }`}
-          style={isMath && !isOpenEnded && showCalculator ? { marginRight: '850px', maxWidth: 'calc(100% - 850px)' } : {}}
+          style={isMath && !isOpenEnded && showCalculator ? { marginLeft: '850px', maxWidth: 'calc(100% - 850px)' } : {}}
         >
           {!currentQuestion ? (
             <div className="text-center py-12">
@@ -1213,7 +1285,7 @@ export default function TakeTestPage() {
               <div
                 className="prose max-w-none mb-6"
                 style={{ fontFamily: 'var(--font-noto-serif), serif' }}
-                dangerouslySetInnerHTML={{ __html: currentQuestion.questionText }}
+                dangerouslySetInnerHTML={{ __html: processMathInText(currentQuestion.questionText) }}
               />
 
               {/* Question Image - Math questions only (English images are above passage) */}
@@ -1267,7 +1339,10 @@ export default function TakeTestPage() {
                             className="sr-only"
                           />
                           <span className="font-semibold w-8 text-lg flex-shrink-0">{String.fromCharCode(65 + index)}</span>
-                          <span className={`flex-1 ${isCrossedOut ? 'line-through' : ''}`}>{option}</span>
+                          <span 
+                            className={`flex-1 ${isCrossedOut ? 'line-through' : ''}`}
+                            dangerouslySetInnerHTML={{ __html: processMathInText(option) }}
+                          />
                         </div>
                         {isEnglish && !isOpenEnded && showCrossOutOptions && (
                           <button
@@ -1426,7 +1501,7 @@ export default function TakeTestPage() {
       {showReferenceSheet && (
         // @ts-ignore - react-draggable Draggable type compatibility
         <Draggable handle=".drag-handle" bounds="parent">
-          <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-[900px] max-h-[90vh] overflow-hidden flex flex-col">
             <div className="bg-gray-100 px-4 py-2 flex items-center justify-between drag-handle cursor-move border-b">
               <span className="font-semibold text-sm">REFERENCE</span>
               <button
