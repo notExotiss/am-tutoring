@@ -167,10 +167,10 @@ export default function StudentDashboard() {
     try {
       const assignmentsRef = collection(db, 'assignments')
       // Query for assignments where studentId is in the studentIds array
+      // Note: Can't use orderBy with array-contains without an index, so we'll sort in memory
       const q = query(
         assignmentsRef, 
-        where('studentIds', 'array-contains', studentId),
-        orderBy('assignedDate', 'desc')
+        where('studentIds', 'array-contains', studentId)
       )
       const querySnapshot = await getDocs(q)
       
@@ -233,6 +233,14 @@ export default function StudentDashboard() {
         })
       })
 
+      // Sort by assignedDate descending (most recent first)
+      assignmentsList.sort((a, b) => {
+        if (!a.assignedDate && !b.assignedDate) return 0
+        if (!a.assignedDate) return 1
+        if (!b.assignedDate) return -1
+        return b.assignedDate.getTime() - a.assignedDate.getTime()
+      })
+
       setAssignments(assignmentsList)
     } catch (error) {
       console.error('Error loading assignments:', error)
@@ -242,8 +250,7 @@ export default function StudentDashboard() {
         const assignmentsRef = collection(db, 'assignments')
         const q = query(
           assignmentsRef, 
-          where('studentId', '==', studentId),
-          orderBy('assignedDate', 'desc')
+          where('studentId', '==', studentId)
         )
         const querySnapshot = await getDocs(q)
         
@@ -263,6 +270,13 @@ export default function StudentDashboard() {
             studentId: data.studentId || '',
           })
         })
+        // Sort by assignedDate descending (most recent first)
+        assignmentsList.sort((a, b) => {
+          if (!a.assignedDate && !b.assignedDate) return 0
+          if (!a.assignedDate) return 1
+          if (!b.assignedDate) return -1
+          return b.assignedDate.getTime() - a.assignedDate.getTime()
+        })
         setAssignments(assignmentsList)
       } catch (fallbackError) {
         console.error('Error loading assignments (fallback):', fallbackError)
@@ -276,10 +290,10 @@ export default function StudentDashboard() {
     try {
       const testsRef = collection(db, 'tests')
       // Query for tests where studentId is in the studentIds array
+      // Note: Can't use orderBy with array-contains without an index, so we'll sort in memory
       const q = query(
         testsRef,
-        where('studentIds', 'array-contains', studentId),
-        orderBy('assignedDate', 'desc')
+        where('studentIds', 'array-contains', studentId)
       )
       const querySnapshot = await getDocs(q)
       
@@ -299,6 +313,14 @@ export default function StudentDashboard() {
         })
       })
 
+      // Sort by assignedDate descending (most recent first)
+      testsList.sort((a, b) => {
+        if (!a.assignedDate && !b.assignedDate) return 0
+        if (!a.assignedDate) return 1
+        if (!b.assignedDate) return -1
+        return b.assignedDate.getTime() - a.assignedDate.getTime()
+      })
+
       setTests(testsList)
     } catch (error) {
       console.error('Error loading tests:', error)
@@ -308,8 +330,7 @@ export default function StudentDashboard() {
         const testsRef = collection(db, 'tests')
         const q = query(
           testsRef,
-          where('studentId', '==', studentId),
-          orderBy('assignedDate', 'desc')
+          where('studentId', '==', studentId)
         )
         const querySnapshot = await getDocs(q)
         
@@ -327,6 +348,13 @@ export default function StudentDashboard() {
             score: data.score || '',
             studentId: data.studentId || '',
           })
+        })
+        // Sort by assignedDate descending (most recent first)
+        testsList.sort((a, b) => {
+          if (!a.assignedDate && !b.assignedDate) return 0
+          if (!a.assignedDate) return 1
+          if (!b.assignedDate) return -1
+          return b.assignedDate.getTime() - a.assignedDate.getTime()
         })
         setTests(testsList)
       } catch (fallbackError) {
