@@ -20,7 +20,11 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -75,6 +79,9 @@ export default function StudentDashboard() {
   const [studentData, setStudentData] = useState<StudentData | null>(null)
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [tests, setTests] = useState<Test[]>([])
+  const [viewingSubmission, setViewingSubmission] = useState<any>(null)
+  const [submissionData, setSubmissionData] = useState<any>(null)
+  const [currentQuestionViewIndex, setCurrentQuestionViewIndex] = useState(0)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -382,6 +389,63 @@ export default function StudentDashboard() {
     }
   }
 
+  const handleViewSubmission = async (type: 'assignment' | 'test', id: string) => {
+    if (!db || !user) return
+    
+    try {
+      const collectionName = type === 'assignment' ? 'assignmentProgress' : 'testProgress'
+      const docId = `${id}_${user.uid}`
+      const progressRef = doc(db, collectionName, docId)
+      const progressDoc = await getDoc(progressRef)
+      
+      if (!progressDoc.exists()) {
+        toast({
+          title: 'No submission found',
+          description: 'No submission data found for this item.',
+          variant: 'destructive',
+        })
+        return
+      }
+      
+      const progressData = progressDoc.data()
+      
+      // Get the assignment/test data
+      const itemRef = doc(db, type === 'assignment' ? 'assignments' : 'tests', id)
+      const itemDoc = await getDoc(itemRef)
+      
+      if (!itemDoc.exists()) {
+        toast({
+          title: 'Error',
+          description: 'Could not find the item data.',
+          variant: 'destructive',
+        })
+        return
+      }
+      
+      const itemData = itemDoc.data()
+      
+      setViewingSubmission({
+        id,
+        title: itemData.title || '',
+        type,
+        ...itemData,
+      })
+      setSubmissionData({
+        ...progressData,
+        answers: progressData.answers || {},
+        openEndedAnswers: progressData.openEndedAnswers || {},
+      })
+      setCurrentQuestionViewIndex(0)
+    } catch (error) {
+      console.error('Error loading submission:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load submission.',
+        variant: 'destructive',
+      })
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -662,9 +726,19 @@ export default function StudentDashboard() {
                               </p>
                             )}
                           </div>
-                          <Badge className="ml-4 bg-green-600">
-                            Completed
-                          </Badge>
+                          <div className="flex items-center gap-2 ml-4">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleViewSubmission('assignment', assignment.id)}
+                              title="View submission"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Badge className="bg-green-600">
+                              Completed
+                            </Badge>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -761,9 +835,19 @@ export default function StudentDashboard() {
                               )}
                             </div>
                           </div>
-                          <Badge className="ml-4 bg-green-600">
-                            Completed
-                          </Badge>
+                          <div className="flex items-center gap-2 ml-4">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleViewSubmission('test', test.id)}
+                              title="View submission"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Badge className="bg-green-600">
+                              Completed
+                            </Badge>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -783,6 +867,153 @@ export default function StudentDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* View Submission Modal */}
+      {viewingSubmission && submissionData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+            <CardHeader className="flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>My Submission: {viewingSubmission.title}</CardTitle>
+                  <CardDescription>Review your answers</CardDescription>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => {
+                  setViewingSubmission(null)
+                  setSubmissionData(null)
+                  setCurrentQuestionViewIndex(0)
+                }}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden flex flex-col">
+              {(() => {
+                const allQuestions = viewingSubmission.questions || []
+                const currentQuestion = allQuestions[currentQuestionViewIndex]
+                const studentAnswer = currentQuestion?.questionType === 'open-ended' 
+                  ? submissionData.openEndedAnswers?.[currentQuestion?.id]
+                  : submissionData.answers?.[currentQuestion?.id]
+                const correctAnswer = currentQuestion?.correctAnswer
+                const isCorrect = currentQuestion?.questionType === 'open-ended'
+                  ? String(studentAnswer || '').trim() === String(correctAnswer || '').trim()
+                  : studentAnswer === correctAnswer
+                
+                return (
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="mb-4 flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">My Answers</h3>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setCurrentQuestionViewIndex(Math.max(0, currentQuestionViewIndex - 1))}
+                          disabled={currentQuestionViewIndex === 0}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <span className="text-sm font-medium px-2">
+                          Question {currentQuestionViewIndex + 1} of {allQuestions.length}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setCurrentQuestionViewIndex(Math.min(allQuestions.length - 1, currentQuestionViewIndex + 1))}
+                          disabled={currentQuestionViewIndex === allQuestions.length - 1}
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {currentQuestion && (
+                      <div className="space-y-4">
+                        <div className="p-4 rounded-lg" style={{ backgroundColor: '#eaedfc' }}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="bg-black text-white w-8 h-8 flex items-center justify-center font-bold text-sm">
+                              {currentQuestionViewIndex + 1}
+                            </div>
+                            <Badge className={isCorrect ? 'bg-green-600' : 'bg-red-600'}>
+                              {isCorrect ? 'Correct' : 'Incorrect'}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div
+                          className="prose max-w-none mb-4"
+                          dangerouslySetInnerHTML={{ __html: currentQuestion.questionText }}
+                        />
+                        
+                        {currentQuestion.questionImage && (
+                          <div className="mb-4">
+                            <img
+                              src={currentQuestion.questionImage}
+                              alt="Question"
+                              className="max-w-full max-h-[400px] rounded"
+                            />
+                          </div>
+                        )}
+                        
+                        {currentQuestion.readingPassage && (
+                          <div className="mb-4 p-4 border rounded bg-gray-50">
+                            <div
+                              className="prose max-w-none"
+                              dangerouslySetInnerHTML={{ __html: currentQuestion.readingPassage }}
+                            />
+                          </div>
+                        )}
+                        
+                        {currentQuestion.questionType === 'open-ended' ? (
+                          <div className="space-y-2">
+                            <div className="p-4 border-2 rounded-lg">
+                              <div className="text-sm text-gray-600 mb-1">My Answer:</div>
+                              <div className="text-lg font-mono">{studentAnswer || '(empty)'}</div>
+                            </div>
+                            <div className={`p-4 border-2 rounded-lg ${isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+                              <div className="text-sm text-gray-600 mb-1">Correct Answer:</div>
+                              <div className="text-lg font-mono">{String(correctAnswer)}</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {currentQuestion.options.map((option: string, index: number) => {
+                              const isSelected = studentAnswer === index
+                              const isCorrectOption = correctAnswer === index
+                              return (
+                                <div
+                                  key={index}
+                                  className={`p-4 border-2 rounded-lg ${
+                                    isCorrectOption
+                                      ? 'border-green-500 bg-green-50'
+                                      : isSelected
+                                      ? 'border-red-500 bg-red-50'
+                                      : 'border-gray-200'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold w-6">{String.fromCharCode(65 + index)}</span>
+                                    <span>{option}</span>
+                                    {isCorrectOption && (
+                                      <Badge className="ml-auto bg-green-600">Correct</Badge>
+                                    )}
+                                    {isSelected && !isCorrectOption && (
+                                      <Badge className="ml-auto bg-red-600">My Answer</Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
