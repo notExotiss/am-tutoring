@@ -1044,7 +1044,7 @@ export default function AssignmentManagement() {
           )}
         </div>
 
-        {/* @ts-expect-error - dnd-kit DragOverlay type compatibility */}
+        {/* @ts-ignore - dnd-kit DragOverlay type compatibility */}
         <DragOverlay>
           {activeAssignment ? (
             <div className="border-l-4 border-blue-500 pl-4 py-3 bg-white rounded shadow-lg">
