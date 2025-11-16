@@ -41,7 +41,7 @@ export default function Hero() {
   }
 
   return (
-    <section id="hero" className="relative min-h-screen flex items-start md:items-center justify-center px-6 pt-10 md:pt-0 pb-64 md:pb-8">
+    <section id="hero" className="relative min-h-screen flex items-start md:items-center justify-center px-6 pt-20 md:pt-0 pb-64 md:pb-8">
 
       <div 
         className="mx-auto max-w-6xl relative z-10 w-full mt-12 md:mt-0"
