@@ -48,59 +48,59 @@ export default function Header() {
         <nav className="mx-auto max-w-7xl px-4 md:px-2 py-4 md:py-4">
           <div className="flex items-center justify-between">
             {/* Name */}
-            <button 
+        <button 
               onClick={scrollToTop} 
               className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-red-700 transition-all duration-300"
               style={{ fontFamily: 'var(--font-allura), cursive' }}
-            >
+        >
               A.M. Tutoring
-            </button>
+        </button>
 
             {/* Center: Desktop Navigation */}
             <div className="hidden gap-8 md:flex absolute left-1/2 -translate-x-1/2">
-              <button
-                onClick={() => scrollToSection('services')}
+          <button
+            onClick={() => scrollToSection('services')}
                 className="text-sm font-bold text-black hover:text-blue-600 transition-all duration-300 relative group"
-              >
-                Services
+          >
+            Services
                 <span className="absolute bottom-0 left-0 w-0 h-1 bg-blue-600 group-hover:w-full transition-all duration-300" />
-              </button>
-              <button
-                onClick={() => scrollToSection('credentials')}
+          </button>
+          <button
+            onClick={() => scrollToSection('credentials')}
                 className="text-sm font-bold text-black hover:text-blue-600 transition-all duration-300 relative group"
-              >
-                Credentials
+          >
+            Credentials
                 <span className="absolute bottom-0 left-0 w-0 h-1 bg-blue-600 group-hover:w-full transition-all duration-300" />
-              </button>
-              <button
-                onClick={() => scrollToSection('contact')}
+          </button>
+          <button
+            onClick={() => scrollToSection('contact')}
                 className="text-sm font-bold text-black hover:text-blue-600 transition-all duration-300 relative group"
-              >
-                Contact
+          >
+            Contact
                 <span className="absolute bottom-0 left-0 w-0 h-1 bg-blue-600 group-hover:w-full transition-all duration-300" />
-              </button>
-            </div>
+          </button>
+        </div>
 
             {/* Right: Get Started Button */}
-            <Button
-              size="sm"
+        <Button
+          size="sm"
               className="hidden md:inline-flex bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-black shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300"
-              onClick={() => scrollToSection('contact')}
-            >
-              Get Started
-            </Button>
+          onClick={() => scrollToSection('contact')}
+        >
+          Get Started
+        </Button>
 
-            {/* Mobile Menu Button */}
-            <button
+        {/* Mobile Menu Button */}
+        <button
               className="md:hidden text-black hover:text-blue-600 transition-colors duration-300 text-2xl font-black"
-              onClick={() => setIsOpen(!isOpen)}
-              aria-label="Toggle menu"
-            >
-              {isOpen ? '✕' : '☰'}
-            </button>
+          onClick={() => setIsOpen(!isOpen)}
+          aria-label="Toggle menu"
+        >
+          {isOpen ? '✕' : '☰'}
+        </button>
           </div>
 
-          {/* Mobile Menu */}
+        {/* Mobile Menu */}
           <div 
             className={`absolute left-0 right-0 top-full flex flex-col gap-3 bg-white backdrop-blur-xl px-6 py-4 md:hidden shadow-xl transition-all duration-300 ease-out overflow-hidden ${
               isOpen 
@@ -133,8 +133,8 @@ export default function Header() {
               Get Started
             </Button>
           </div>
-        </nav>
-      </header>
+      </nav>
+    </header>
 
       {/* Scroll to Top Button */}
       <button

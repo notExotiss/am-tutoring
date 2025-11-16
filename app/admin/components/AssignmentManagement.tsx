@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, where } from 'firebase/firestore'
+import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,10 +11,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash2, CalendarIcon, BookOpen, Folder, X } from 'lucide-react'
+import { Plus, Trash2, CalendarIcon, BookOpen, Folder, X, GripVertical } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core'
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface Assignment {
   id?: string
@@ -39,13 +42,108 @@ interface Folder {
   name: string
 }
 
+function DroppableFolder({ id, name, description, children }: { id: string, name: string, description: string, children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: id,
+  })
+
+  return (
+    <Card
+      ref={setNodeRef}
+      className={cn(
+        "transition-colors",
+        isOver && "border-blue-500 bg-blue-50"
+      )}
+    >
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Folder className="w-5 h-5 text-blue-600" />
+          {name}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {children}
+      </CardContent>
+    </Card>
+  )
+}
+
+function SortableAssignmentItem({ assignment, onDelete }: { assignment: Assignment, onDelete: (id: string) => void }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: assignment.id || '' })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="border-l-4 border-blue-500 pl-4 py-3 bg-gray-50 rounded-r mb-2"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-2 flex-1">
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing mt-1"
+          >
+            <GripVertical className="w-4 h-4 text-gray-400" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-lg">{assignment.title}</h3>
+            <p className="text-gray-600 text-sm mb-2">{assignment.description}</p>
+            <div className="flex gap-4 text-xs text-gray-500">
+              {assignment.assignedDate && (
+                <span>Assigned: {format(assignment.assignedDate, 'MMM dd, yyyy')}</span>
+              )}
+              {assignment.dueDate && (
+                <span>Due: {format(assignment.dueDate, 'MMM dd, yyyy')}</span>
+              )}
+            </div>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => assignment.id && onDelete(assignment.id)}
+          className="text-red-600 hover:text-red-700"
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export default function AssignmentManagement() {
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
+  const [selectedStudent, setSelectedStudent] = useState<string>('')
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [showFolderForm, setShowFolderForm] = useState(false)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const { toast } = useToast()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   useEffect(() => {
     loadData()
@@ -127,18 +225,26 @@ export default function AssignmentManagement() {
   }
 
   const handleNewAssignment = () => {
+    if (!selectedStudent) {
+      toast({
+        title: 'Error',
+        description: 'Please select a student first.',
+        variant: 'destructive',
+      })
+      return
+    }
     setSelectedAssignment({
       title: '',
       description: '',
-      folderId: '',
-      studentId: '',
+      folderId: undefined,
+      studentId: selectedStudent,
       dueDate: null,
       assignedDate: new Date(),
     })
     setShowForm(true)
   }
 
-  const handleSave = async () => {
+  const handleSaveAssignment = async () => {
     if (!db || !selectedAssignment || !selectedAssignment.studentId) {
       toast({
         title: 'Error',
@@ -181,6 +287,79 @@ export default function AssignmentManagement() {
     }
   }
 
+  const handleCreateFolder = async () => {
+    if (!db || !newFolderName.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a folder name.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      const foldersRef = collection(db, 'folders')
+      const newDocRef = doc(foldersRef)
+      await setDoc(newDocRef, { name: newFolderName.trim() })
+
+      toast({
+        title: 'Success',
+        description: 'Folder created successfully!',
+      })
+
+      setNewFolderName('')
+      setShowFolderForm(false)
+      await loadData()
+    } catch (error) {
+      console.error('Error creating folder:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to create folder.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleDragEnd = async (event: any) => {
+    const { active, over } = event
+
+    if (!over || active.id === over.id) {
+      setActiveId(null)
+      return
+    }
+
+    const assignmentId = active.id as string
+    const targetFolderId = over.id as string
+
+    // Find the assignment
+    const assignment = assignments.find(a => a.id === assignmentId)
+    if (!assignment || !db) return
+
+    // Update assignment folder
+    try {
+      const assignmentRef = doc(db, 'assignments', assignmentId)
+      await updateDoc(assignmentRef, {
+        folderId: targetFolderId === 'unassigned' ? null : targetFolderId,
+      } as any)
+
+      toast({
+        title: 'Success',
+        description: 'Assignment moved successfully!',
+      })
+
+      await loadData()
+    } catch (error) {
+      console.error('Error moving assignment:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to move assignment.',
+        variant: 'destructive',
+      })
+    }
+
+    setActiveId(null)
+  }
+
   const handleDelete = async (assignmentId: string) => {
     if (!db || !confirm('Are you sure you want to delete this assignment?')) {
       return
@@ -203,14 +382,27 @@ export default function AssignmentManagement() {
     }
   }
 
-  // Group assignments by student
-  const assignmentsByStudent = new Map<string, Assignment[]>()
-  assignments.forEach(assignment => {
-    if (!assignmentsByStudent.has(assignment.studentId)) {
-      assignmentsByStudent.set(assignment.studentId, [])
+  // Filter assignments by selected student
+  const studentAssignments = selectedStudent
+    ? assignments.filter(a => a.studentId === selectedStudent)
+    : []
+
+  // Group assignments by folder
+  const assignmentsByFolder = new Map<string, Assignment[]>()
+  const unassignedAssignments: Assignment[] = []
+
+  studentAssignments.forEach(assignment => {
+    if (assignment.folderId) {
+      if (!assignmentsByFolder.has(assignment.folderId)) {
+        assignmentsByFolder.set(assignment.folderId, [])
+      }
+      assignmentsByFolder.get(assignment.folderId)!.push(assignment)
+    } else {
+      unassignedAssignments.push(assignment)
     }
-    assignmentsByStudent.get(assignment.studentId)!.push(assignment)
   })
+
+  const activeAssignment = activeId ? assignments.find(a => a.id === activeId) : null
 
   return (
     <div>
@@ -219,13 +411,89 @@ export default function AssignmentManagement() {
           <h2 className="text-2xl font-bold">Assignments</h2>
           <p className="text-gray-600 text-sm">Create and manage assignments for students</p>
         </div>
-        <Button onClick={handleNewAssignment} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" />
-          New Assignment
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowFolderForm(true)}
+          >
+            <Folder className="w-4 h-4 mr-2" />
+            New Folder
+          </Button>
+          <Button onClick={handleNewAssignment} className="bg-blue-600 hover:bg-blue-700" disabled={!selectedStudent}>
+            <Plus className="w-4 h-4 mr-2" />
+            New Assignment
+          </Button>
+        </div>
       </div>
 
-      {/* Create/Edit Form */}
+      {/* Student Selector */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Select Student</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a student to manage assignments" />
+            </SelectTrigger>
+            <SelectContent>
+              {students.map((student) => (
+                <SelectItem key={student.id} value={student.id}>
+                  {student.name} ({student.email})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      {/* Create Folder Form */}
+      {showFolderForm && (
+        <Card className="mb-6 border-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Create New Folder</CardTitle>
+              <Button variant="ghost" size="icon" onClick={() => {
+                setShowFolderForm(false)
+                setNewFolderName('')
+              }}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <Label>Folder Name</Label>
+                <Input
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  className="mt-1"
+                  placeholder="Enter folder name"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCreateFolder()
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex gap-4">
+                <Button onClick={handleCreateFolder} className="bg-blue-600 hover:bg-blue-700">
+                  Create Folder
+                </Button>
+                <Button variant="outline" onClick={() => {
+                  setShowFolderForm(false)
+                  setNewFolderName('')
+                }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Create Assignment Form */}
       {showForm && selectedAssignment && (
         <Card className="mb-6 border-2">
           <CardHeader>
@@ -241,45 +509,6 @@ export default function AssignmentManagement() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div>
-                <Label>Student</Label>
-                <Select
-                  value={selectedAssignment.studentId}
-                  onValueChange={(value) => setSelectedAssignment({ ...selectedAssignment, studentId: value })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select a student" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {students.map((student) => (
-                      <SelectItem key={student.id} value={student.id}>
-                        {student.name} ({student.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Folder (Optional)</Label>
-                <Select
-                  value={selectedAssignment.folderId || ''}
-                  onValueChange={(value) => setSelectedAssignment({ ...selectedAssignment, folderId: value || undefined })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select a folder (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No Folder</SelectItem>
-                    {folders.map((folder) => (
-                      <SelectItem key={folder.id} value={folder.id}>
-                        {folder.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               <div>
                 <Label>Title</Label>
                 <Input
@@ -363,7 +592,7 @@ export default function AssignmentManagement() {
               </div>
 
               <div className="flex gap-4">
-                <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
+                <Button onClick={handleSaveAssignment} className="bg-blue-600 hover:bg-blue-700">
                   Create Assignment
                 </Button>
                 <Button variant="outline" onClick={() => {
@@ -378,74 +607,82 @@ export default function AssignmentManagement() {
         </Card>
       )}
 
-      {/* Assignments List */}
-      {assignments.length === 0 ? (
-        <Card className="p-12 text-center">
-          <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-          <h3 className="text-xl font-semibold mb-2">No assignments yet</h3>
-          <p className="text-gray-600 mb-6">Create your first assignment to get started</p>
-          <Button onClick={handleNewAssignment} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Create First Assignment
-          </Button>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {Array.from(assignmentsByStudent.entries()).map(([studentId, studentAssignments]) => {
-            const student = students.find(s => s.id === studentId)
-            return (
-              <Card key={studentId}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-blue-600" />
-                    {student?.name || 'Unknown Student'}
-                  </CardTitle>
-                  <CardDescription>{student?.email}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {studentAssignments.map((assignment) => (
-                      <div key={assignment.id} className="border-l-4 border-blue-500 pl-4 py-3 bg-gray-50 rounded-r">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-lg">{assignment.title}</h3>
-                              {assignment.folderName && (
-                                <Badge variant="secondary" className="text-xs">
-                                  <Folder className="w-3 h-3 mr-1" />
-                                  {assignment.folderName}
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-gray-600 text-sm mb-2">{assignment.description}</p>
-                            <div className="flex gap-4 text-xs text-gray-500">
-                              {assignment.assignedDate && (
-                                <span>Assigned: {format(assignment.assignedDate, 'MMM dd, yyyy')}</span>
-                              )}
-                              {assignment.dueDate && (
-                                <span>Due: {format(assignment.dueDate, 'MMM dd, yyyy')}</span>
-                              )}
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => assignment.id && handleDelete(assignment.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
+      {/* Assignments and Folders with Drag and Drop */}
+      {selectedStudent && (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={(event) => setActiveId(event.active.id as string)}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="space-y-6">
+            {/* Unassigned Assignments */}
+            {unassignedAssignments.length > 0 && (
+              <DroppableFolder id="unassigned" name="Unassigned Assignments" description="Drag assignments here or to folders">
+                <SortableContext
+                  items={unassignedAssignments.map(a => a.id || '')}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {unassignedAssignments.map((assignment) => (
+                    <SortableAssignmentItem
+                      key={assignment.id}
+                      assignment={assignment}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </SortableContext>
+              </DroppableFolder>
+            )}
+
+            {/* Folders with Assignments */}
+            {Array.from(assignmentsByFolder.entries()).map(([folderId, folderAssignments]) => {
+              const folder = folders.find(f => f.id === folderId)
+              return (
+                <DroppableFolder
+                  key={folderId}
+                  id={folderId || ''}
+                  name={folder?.name || 'Unknown Folder'}
+                  description="Drop assignments here to organize them"
+                >
+                  <SortableContext
+                    items={folderAssignments.map(a => a.id || '')}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {folderAssignments.map((assignment) => (
+                      <SortableAssignmentItem
+                        key={assignment.id}
+                        assignment={assignment}
+                        onDelete={handleDelete}
+                      />
                     ))}
-                  </div>
-                </CardContent>
+                  </SortableContext>
+                </DroppableFolder>
+              )
+            })}
+
+            {/* Empty State */}
+            {studentAssignments.length === 0 && (
+              <Card className="p-12 text-center">
+                <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-xl font-semibold mb-2">No assignments yet</h3>
+                <p className="text-gray-600 mb-6">Create your first assignment to get started</p>
+                <Button onClick={handleNewAssignment} className="bg-blue-600 hover:bg-blue-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create First Assignment
+                </Button>
               </Card>
-            )
-          })}
-        </div>
+            )}
+          </div>
+
+          <DragOverlay>
+            {activeAssignment ? (
+              <div className="border-l-4 border-blue-500 pl-4 py-3 bg-white rounded shadow-lg">
+                <h3 className="font-semibold text-lg">{activeAssignment.title}</h3>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
     </div>
   )
 }
-

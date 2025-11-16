@@ -564,9 +564,17 @@ export default function StudentDashboard() {
                               )}
                             </div>
                           </div>
-                          <Badge variant="outline" className="ml-4">
-                            Pending
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              onClick={() => router.push(`/student-dashboard/take-test/${test.id}`)}
+                              className="bg-blue-600 hover:bg-blue-700"
+                            >
+                              Start Test
+                            </Button>
+                            <Badge variant="outline" className="ml-4">
+                              Pending
+                            </Badge>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
