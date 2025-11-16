@@ -128,6 +128,7 @@ export default function StudentStats() {
     })
 
     return () => unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   const loadStudents = async () => {

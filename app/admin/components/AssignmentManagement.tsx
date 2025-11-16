@@ -428,7 +428,7 @@ export default function AssignmentManagement() {
         if (assignment.id) {
           const assignmentRef = doc(db, 'assignments', assignment.id)
           const currentStudentIds = assignment.studentIds || []
-          const newStudentIds = [...new Set([...currentStudentIds, ...studentIds])]
+          const newStudentIds = Array.from(new Set([...currentStudentIds, ...studentIds]))
           await setDoc(assignmentRef, {
             ...assignment,
             studentIds: newStudentIds,

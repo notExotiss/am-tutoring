@@ -95,6 +95,7 @@ export default function StudentDashboard() {
     })
 
     return () => unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   const loadStudentData = async (email: string) => {
