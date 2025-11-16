@@ -104,6 +104,7 @@ export default function StudentManagement() {
 
   useEffect(() => {
     loadStudents()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadStudents = async () => {

@@ -72,6 +72,7 @@ export default function TakeTestPage() {
 
   useEffect(() => {
     loadTest()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.testId])
 
   useEffect(() => {
@@ -88,6 +89,7 @@ export default function TakeTestPage() {
 
       return () => clearInterval(interval)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testState, isPaused])
 
   useEffect(() => {

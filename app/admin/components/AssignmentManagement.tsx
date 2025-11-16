@@ -193,6 +193,7 @@ export default function AssignmentManagement() {
 
   useEffect(() => {
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadData = async () => {
@@ -794,7 +795,7 @@ export default function AssignmentManagement() {
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">
-                <p>No questions yet. Click "Add Question" to get started.</p>
+                <p>No questions yet. Click &quot;Add Question&quot; to get started.</p>
               </div>
             )}
           </CardContent>
