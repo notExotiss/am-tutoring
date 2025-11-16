@@ -178,9 +178,11 @@ export default function StudentDashboard() {
       const folderMap = new Map<string, string>()
 
       // Load folders
+      if (!db) return
       const foldersRef = collection(db, 'folders')
       const foldersSnapshot = await getDocs(foldersRef)
       foldersSnapshot.forEach((doc) => {
+        if (!db) return
         const folderData = doc.data()
         folderMap.set(doc.id, folderData.name || 'Unnamed Folder')
         // Also check if folder is assigned to this student
@@ -235,6 +237,7 @@ export default function StudentDashboard() {
     } catch (error) {
       console.error('Error loading assignments:', error)
       // Fallback: try old format
+      if (!db) return
       try {
         const assignmentsRef = collection(db, 'assignments')
         const q = query(
@@ -300,6 +303,7 @@ export default function StudentDashboard() {
     } catch (error) {
       console.error('Error loading tests:', error)
       // Fallback: try old format with single studentId
+      if (!db) return
       try {
         const testsRef = collection(db, 'tests')
         const q = query(
