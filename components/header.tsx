@@ -81,13 +81,13 @@ export default function Header() {
           </button>
         </div>
 
-            {/* Right: Get Started Button */}
+            {/* Right: Sign In Button */}
         <Button
           size="sm"
               className="hidden md:inline-flex bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-black shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300"
-          onClick={() => scrollToSection('contact')}
+          onClick={() => window.location.href = '/sign-in'}
         >
-          Get Started
+          Sign In
         </Button>
 
         {/* Mobile Menu Button */}
@@ -127,10 +127,10 @@ export default function Header() {
               Contact
             </button>
             <Button 
-              onClick={() => scrollToSection('contact')} 
+              onClick={() => window.location.href = '/sign-in'} 
               className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-black mt-2 shadow-lg hover:shadow-xl"
             >
-              Get Started
+              Sign In
             </Button>
           </div>
       </nav>

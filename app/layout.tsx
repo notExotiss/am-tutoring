@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter, Allura } from 'next/font/google'
+import { Inter, Allura, Noto_Serif } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
@@ -12,6 +12,10 @@ const allura = Allura({
   subsets: ["latin"],
   variable: '--font-allura',
   weight: ['400']
+});
+const notoSerif = Noto_Serif({ 
+  subsets: ["latin"],
+  variable: '--font-noto-serif',
 });
 
 export const metadata: Metadata = {
@@ -44,7 +48,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} ${inter.variable} ${allura.variable} antialiased`}>
+      <body className={`${inter.className} ${inter.variable} ${allura.variable} ${notoSerif.variable} antialiased`}>
         {children}
         <Analytics />
         <Toaster />

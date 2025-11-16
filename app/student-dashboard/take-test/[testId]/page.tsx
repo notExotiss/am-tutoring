@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, setDoc, collection } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { db, auth } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
@@ -69,8 +69,13 @@ export default function TakeTestPage() {
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Set<string>>(new Set())
   const [crossedOutOptions, setCrossedOutOptions] = useState<Record<string, Set<number>>>({})
   const [openEndedAnswers, setOpenEndedAnswers] = useState<Record<string, string>>({})
+  const [highlights, setHighlights] = useState<Record<string, Array<{start: number, end: number, id: string}>>>({})
   const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [showReviewPage, setShowReviewPage] = useState(false)
+  const [pendingNextState, setPendingNextState] = useState<TestState | null>(null)
   const [studentName, setStudentName] = useState('Student')
+  const [userId, setUserId] = useState<string | null>(null)
+  const [hasStarted, setHasStarted] = useState(false)
   const dividerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -79,8 +84,114 @@ export default function TakeTestPage() {
   }, [params.testId])
 
   useEffect(() => {
-    // Timer runs for active test sections and break
-    if (testState !== 'not-started' && testState !== 'completed' && !isPaused && timeRemaining > 0) {
+    if (!auth) return
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserId(user.uid)
+        setStudentName(user.displayName || user.email?.split('@')[0] || 'Student')
+      }
+    })
+    return () => unsubscribe()
+  }, [])
+
+  const saveProgress = async () => {
+    if (!db || !test || !userId || testState === 'not-started' || testState === 'completed') return
+    
+    try {
+      const progressRef = doc(collection(db, 'testProgress'), `${test.id}_${userId}`)
+      await setDoc(progressRef, {
+        testId: test.id,
+        userId: userId,
+        testState: testState,
+        currentQuestionIndex: currentQuestionIndex,
+        answers: answers,
+        openEndedAnswers: openEndedAnswers,
+        timeRemaining: timeRemaining,
+        isPaused: isPaused,
+        bookmarkedQuestions: Array.from(bookmarkedQuestions),
+        crossedOutOptions: Object.fromEntries(
+          Object.entries(crossedOutOptions).map(([k, v]) => [k, Array.from(v)])
+        ),
+        highlights: highlights,
+        updatedAt: new Date(),
+      } as any)
+    } catch (error) {
+      console.error('Error saving progress:', error)
+    }
+  }
+
+  const loadProgress = async () => {
+    if (!db || !test || !userId) return
+    
+    try {
+      const progressRef = doc(collection(db, 'testProgress'), `${test.id}_${userId}`)
+      const progressDoc = await getDoc(progressRef)
+      
+      if (progressDoc.exists()) {
+        const data = progressDoc.data()
+        setHasStarted(true)
+        if (data.testState && data.testState !== 'completed') {
+          setTestState(data.testState as TestState)
+          setCurrentQuestionIndex(data.currentQuestionIndex || 0)
+          setAnswers(data.answers || {})
+          setOpenEndedAnswers(data.openEndedAnswers || {})
+          setTimeRemaining(data.timeRemaining || 0)
+          setIsPaused(data.isPaused || false)
+          setBookmarkedQuestions(new Set(data.bookmarkedQuestions || []))
+          const crossedOut = data.crossedOutOptions || {}
+          setCrossedOutOptions(
+            Object.fromEntries(
+              Object.entries(crossedOut).map(([k, v]) => [k, new Set(v as number[])])
+            )
+          )
+          setHighlights(data.highlights || {})
+        }
+      }
+    } catch (error) {
+      console.error('Error loading progress:', error)
+    }
+  }
+
+  useEffect(() => {
+    if (test && userId) {
+      loadProgress()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test, userId])
+
+  // Save progress periodically and on state changes
+  useEffect(() => {
+    if (test && userId && testState !== 'not-started' && testState !== 'completed') {
+      const saveInterval = setInterval(() => {
+        saveProgress()
+      }, 30000) // Save every 30 seconds
+      
+      return () => clearInterval(saveInterval)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test, userId, testState, answers, openEndedAnswers, timeRemaining, currentQuestionIndex, bookmarkedQuestions, crossedOutOptions, highlights])
+
+  // Save on exit
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (test && userId && testState !== 'not-started' && testState !== 'completed') {
+        saveProgress()
+      }
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      if (test && userId && testState !== 'not-started' && testState !== 'completed') {
+        saveProgress()
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test, userId, testState, answers, openEndedAnswers, timeRemaining, currentQuestionIndex, bookmarkedQuestions, crossedOutOptions, highlights])
+
+  useEffect(() => {
+    // Timer runs for active test sections and break - keep ticking even when paused (unscheduled break)
+    if (testState !== 'not-started' && testState !== 'completed' && timeRemaining > 0) {
       const interval = setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
@@ -191,13 +302,24 @@ export default function TakeTestPage() {
     }
   }
 
-  const startTest = () => {
-    // Set state and timer together - don't rely on async state update
-    const newState: TestState = 'english-m1'
+  const startTest = async () => {
+    // Set state and timer together - don&apos;t rely on async state update
+    const newState: TestState = testState === 'not-started' ? 'english-m1' : testState
     setTestState(newState)
-    if (test?.timeLimitEnabled && test.englishModule1Time) {
-      setTimeRemaining(test.englishModule1Time * 60)
+    setHasStarted(true)
+    if (test?.timeLimitEnabled) {
+      // If resuming, use saved time, otherwise start fresh
+      if (timeRemaining === 0) {
+        if (newState === 'english-m1' || newState === 'english-m2') {
+          setTimeRemaining((test.englishModule1Time || 32) * 60)
+        } else if (newState === 'math-m1' || newState === 'math-m2') {
+          setTimeRemaining((test.mathModule1Time || 35) * 60)
+        } else if (newState === 'break') {
+          setTimeRemaining((test.breakTime || 10) * 60)
+        }
+      }
     }
+    await saveProgress()
   }
 
   const handlePause = () => {
@@ -214,37 +336,55 @@ export default function TakeTestPage() {
   }
 
   const handleNextSection = () => {
-    switch (testState) {
-      case 'english-m1':
+    // Show review page before moving to next section
+    setShowReviewPage(true)
+  }
+
+  const confirmMoveToNextSection = () => {
+    setShowReviewPage(false)
+    const nextState = pendingNextState || (() => {
+      switch (testState) {
+        case 'english-m1': return 'english-m2' as TestState
+        case 'english-m2': return 'break' as TestState
+        case 'break': return 'math-m1' as TestState
+        case 'math-m1': return 'math-m2' as TestState
+        case 'math-m2': return 'completed' as TestState
+        default: return testState
+      }
+    })()
+    
+    switch (nextState) {
+      case 'english-m2':
         setTestState('english-m2')
         const m2Time = test?.englishModule2Time || 32
         if (test?.timeLimitEnabled) setTimeRemaining(m2Time * 60)
         setCurrentQuestionIndex(0)
         setIsPaused(false)
         break
-      case 'english-m2':
+      case 'break':
         setTestState('break')
         if (test?.timeLimitEnabled) setTimeRemaining((test.breakTime || 10) * 60)
         setIsPaused(false)
         break
-      case 'break':
+      case 'math-m1':
         setTestState('math-m1')
         const mathM1Time = test?.mathModule1Time || 35
         if (test?.timeLimitEnabled) setTimeRemaining(mathM1Time * 60)
         setCurrentQuestionIndex(0)
         setIsPaused(false)
         break
-      case 'math-m1':
+      case 'math-m2':
         setTestState('math-m2')
         const mathM2Time = test?.mathModule2Time || 35
         if (test?.timeLimitEnabled) setTimeRemaining(mathM2Time * 60)
         setCurrentQuestionIndex(0)
         setIsPaused(false)
         break
-      case 'math-m2':
+      case 'completed':
         handleSubmitTest()
         break
     }
+    setPendingNextState(null)
   }
 
   const handleSubmitTest = async () => {
@@ -307,6 +447,12 @@ export default function TakeTestPage() {
   }
 
   const toggleCrossOut = (questionId: string, optionIndex: number) => {
+    // If crossing out a selected answer, remove the answer
+    if (answers[questionId] === optionIndex) {
+      const newAnswers = { ...answers }
+      delete newAnswers[questionId]
+      setAnswers(newAnswers)
+    }
     setCrossedOutOptions(prev => {
       const newMap = { ...prev }
       if (!newMap[questionId]) {
@@ -322,6 +468,135 @@ export default function TakeTestPage() {
       return newMap
     })
   }
+
+  const handleTextSelection = (questionId: string) => {
+    if (!highlightMode || !currentQuestion) return
+    
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+    
+    const range = selection.getRangeAt(0)
+    const passageElement = document.querySelector(`[data-question-id="${questionId}"]`)
+    if (!passageElement || !passageElement.contains(range.commonAncestorContainer)) return
+    
+    // Get text content and offsets
+    const passageText = passageElement.textContent || ''
+    const selectedText = selection.toString().trim()
+    if (!selectedText) return
+    
+    // Find the start and end positions in the text
+    const startOffset = range.startOffset
+    const endOffset = range.endOffset
+    
+    // Create highlight
+    const highlightId = `${Date.now()}-${Math.random()}`
+    const newHighlights = { ...highlights }
+    if (!newHighlights[questionId]) {
+      newHighlights[questionId] = []
+    }
+    newHighlights[questionId].push({ start: startOffset, end: endOffset, id: highlightId })
+    setHighlights(newHighlights)
+    
+    // Clear selection
+    selection.removeAllRanges()
+  }
+
+  const removeHighlight = (questionId: string, highlightId: string) => {
+    const newHighlights = { ...highlights }
+    if (newHighlights[questionId]) {
+      newHighlights[questionId] = newHighlights[questionId].filter(h => h.id !== highlightId)
+      if (newHighlights[questionId].length === 0) {
+        delete newHighlights[questionId]
+      }
+    }
+    setHighlights(newHighlights)
+  }
+
+  const renderPassageWithHighlights = (passage: string, questionId: string) => {
+    if (!highlights[questionId] || highlights[questionId].length === 0) {
+      return passage
+    }
+    
+    // Create a temporary div to work with the HTML
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = passage
+    const textNode = tempDiv.childNodes[0] || tempDiv
+    
+    // Get text content for position calculation
+    const textContent = tempDiv.textContent || ''
+    
+    // Sort highlights by start position (reverse to insert from end)
+    const sortedHighlights = [...highlights[questionId]].sort((a, b) => b.start - a.start)
+    
+    // Insert highlights from end to start to preserve positions
+    sortedHighlights.forEach((highlight) => {
+      // Find text nodes and calculate positions
+      let currentPos = 0
+      const walker = document.createTreeWalker(
+        tempDiv,
+        NodeFilter.SHOW_TEXT,
+        null
+      )
+      
+      let node: Node | null = null
+      let startNode: Node | null = null
+      let endNode: Node | null = null
+      let startOffset = 0
+      let endOffset = 0
+      
+      while (node = walker.nextNode()) {
+        const nodeLength = node.textContent?.length || 0
+        if (currentPos <= highlight.start && highlight.start < currentPos + nodeLength) {
+          startNode = node
+          startOffset = highlight.start - currentPos
+        }
+        if (currentPos <= highlight.end && highlight.end <= currentPos + nodeLength) {
+          endNode = node
+          endOffset = highlight.end - currentPos
+          break
+        }
+        currentPos += nodeLength
+      }
+      
+      if (startNode && endNode) {
+        const range = document.createRange()
+        range.setStart(startNode, startOffset)
+        range.setEnd(endNode, endOffset)
+        
+        const mark = document.createElement('mark')
+        mark.style.backgroundColor = '#fef0b1'
+        mark.style.cursor = 'pointer'
+        mark.setAttribute('data-highlight-id', highlight.id)
+        mark.setAttribute('data-question-id', questionId)
+        mark.onclick = (e) => {
+          e.stopPropagation()
+          removeHighlight(questionId, highlight.id)
+        }
+        
+        try {
+          range.surroundContents(mark)
+        } catch (e) {
+          // If surroundContents fails, extract and wrap
+          const contents = range.extractContents()
+          mark.appendChild(contents)
+          range.insertNode(mark)
+        }
+      }
+    })
+    
+    return tempDiv.innerHTML
+  }
+
+  // Expose removeHighlight to window for inline onclick handlers
+  useEffect(() => {
+    (window as any).removeHighlight = (qId: string, hId: string) => {
+      removeHighlight(qId, hId)
+    }
+    return () => {
+      delete (window as any).removeHighlight
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Get student name from auth
   useEffect(() => {
@@ -382,8 +657,8 @@ export default function TakeTestPage() {
 
   if (testState === 'not-started') {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
-        <div className="max-w-4xl mx-afixeuto">
+      <div className="min-h-screen bg-gray-50 py-8 px-4 flex items-center justify-center">
+        <div className="max-w-4xl w-full">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <h1 className="text-3xl font-bold mb-4">{test.title}</h1>
             <div className="mb-6">
@@ -398,7 +673,7 @@ export default function TakeTestPage() {
             </div>
             <div className="flex gap-4">
               <Button onClick={startTest} className="bg-blue-600 hover:bg-blue-700">
-                Start Test
+                {hasStarted ? 'Resume Test' : 'Start Test'}
               </Button>
               <Button variant="outline" onClick={() => router.push('/student-dashboard')}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
@@ -432,15 +707,22 @@ export default function TakeTestPage() {
               </div>
             )}
             <Button 
-              onClick={handleNextSection} 
+              onClick={() => {
+                if (test.timeLimitEnabled && timeRemaining > 0) {
+                  if (confirm('Are you sure you want to skip the break? You still have time remaining.')) {
+                    handleNextSection()
+                  }
+                } else {
+                  handleNextSection()
+                }
+              }}
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
-              disabled={test.timeLimitEnabled && timeRemaining > 0}
             >
-              Start Math Section
+              {test.timeLimitEnabled && timeRemaining > 0 ? 'Skip Break' : 'Start Math Section'}
             </Button>
             {test.timeLimitEnabled && timeRemaining > 0 && (
               <p className="text-sm text-gray-500 mt-4">
-                Please wait for the break to finish before continuing.
+                You can skip the break if you&apos;re ready to continue.
               </p>
             )}
           </div>
@@ -468,19 +750,106 @@ export default function TakeTestPage() {
     )
   }
 
+  if (showReviewPage) {
+    const reviewQuestions = getCurrentQuestions()
+    const answeredCount = reviewQuestions.filter(q => answers[q.id] !== undefined || openEndedAnswers[q.id]).length
+    const bookmarkedCount = reviewQuestions.filter(q => bookmarkedQuestions.has(q.id)).length
+    const unansweredCount = reviewQuestions.length - answeredCount
+    
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <header className="px-6 py-3" style={{ backgroundColor: '#eaedfc' }}>
+          <h2 className="text-sm font-semibold text-gray-900">Review Your Answers</h2>
+        </header>
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold mb-4">Section Review</h1>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">{answeredCount}</div>
+                  <div className="text-sm text-gray-600">Answered</div>
+                </div>
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-yellow-600">{bookmarkedCount}</div>
+                  <div className="text-sm text-gray-600">Bookmarked</div>
+                </div>
+                <div className="bg-red-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-red-600">{unansweredCount}</div>
+                  <div className="text-sm text-gray-600">Unanswered</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <h3 className="font-semibold mb-4">Question Overview</h3>
+              <div className="grid grid-cols-10 gap-2">
+                {reviewQuestions.map((q, index) => {
+                  const hasAnswer = answers[q.id] !== undefined || openEndedAnswers[q.id]
+                  const isBookmarked = bookmarkedQuestions.has(q.id)
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => {
+                        setShowReviewPage(false)
+                        setCurrentQuestionIndex(index)
+                      }}
+                      className={`w-10 h-10 rounded border-2 flex items-center justify-center text-sm font-semibold ${
+                        hasAnswer
+                          ? 'border-green-500 bg-green-50 text-green-700'
+                          : isBookmarked
+                          ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
+                          : 'border-gray-300 bg-gray-50 text-gray-700'
+                      }`}
+                      title={`Question ${index + 1}${isBookmarked ? ' (Bookmarked)' : ''}${hasAnswer ? ' (Answered)' : ''}`}
+                    >
+                      {index + 1}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            
+            <div className="flex gap-4 justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setShowReviewPage(false)}
+                className="rounded-full"
+              >
+                Go Back
+              </Button>
+              <Button
+                onClick={confirmMoveToNextSection}
+                className="rounded-full text-white"
+                style={{ backgroundColor: '#314dcc' }}
+              >
+                Continue to Next Section
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Top Header - Bluebook Style - EXACT MATCH */}
-      <header className="bg-[#1a1f3a] text-white px-6 py-3 flex items-center justify-between" style={{ backgroundColor: '#1a1f3a' }}>
+      <header className="px-6 py-3 flex items-center justify-between relative" style={{ backgroundColor: '#eaedfc' }}>
+        {/* Dashed border below header */}
+        <div className="absolute bottom-0 left-0 right-0 h-px" style={{ 
+          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 8px, transparent 8px, transparent 16px)',
+          height: '1px'
+        }}></div>
         {/* Left: Section Title */}
         <div className="flex items-center gap-4">
           <div>
-            <h2 className="text-sm font-semibold leading-tight">
+            <h2 className="text-sm font-semibold leading-tight text-gray-900">
               {isEnglish ? 'Section 1: Reading and Writing' : 'Section 2: Math'}
             </h2>
             <button
               onClick={() => setShowDirections(!showDirections)}
-              className="text-xs text-blue-300 hover:text-blue-200 flex items-center gap-1 mt-0.5"
+              className="text-xs text-gray-600 hover:text-gray-800 flex items-center gap-1 mt-0.5"
             >
               Directions {showDirections ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
@@ -488,13 +857,13 @@ export default function TakeTestPage() {
         </div>
         
         {/* Center: Timer */}
-        <div className="flex-1 flex justify-center">
+        <div className="absolute left-1/2 transform -translate-x-1/2">
           {test.timeLimitEnabled && showTimer && (
             <div className="text-center">
-              <h1 className="text-2xl font-bold leading-tight">{formatTime(timeRemaining)}</h1>
+              <h1 className="text-2xl font-bold leading-tight text-gray-900">{formatTime(timeRemaining)}</h1>
               <button
                 onClick={() => setShowTimer(false)}
-                className="text-xs text-blue-300 hover:text-blue-200 mt-0.5"
+                className="text-xs text-gray-600 hover:text-gray-800 mt-0.5"
               >
                 Hide
               </button>
@@ -503,7 +872,7 @@ export default function TakeTestPage() {
           {!showTimer && test.timeLimitEnabled && (
             <button
               onClick={() => setShowTimer(true)}
-              className="text-xs text-blue-300 hover:text-blue-200 px-2 py-1 border border-blue-300 rounded"
+              className="text-xs text-gray-600 hover:text-gray-800 px-2 py-1 border border-gray-300 rounded"
             >
               Show Timer
             </button>
@@ -572,12 +941,13 @@ export default function TakeTestPage() {
                     {isPaused ? 'Resume' : 'Pause'}
                   </button>
                   <button
-                    onClick={() => {
-                      if (confirm('Are you sure you want to exit? Your progress will be saved.')) {
-                        router.push('/student-dashboard')
-                      }
-                      setShowMoreMenu(false)
-                    }}
+                  onClick={async () => {
+                    if (confirm('Are you sure you want to exit? Your progress will be saved.')) {
+                      await saveProgress()
+                      router.push('/student-dashboard')
+                    }
+                    setShowMoreMenu(false)
+                  }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Exit Test
@@ -632,10 +1002,15 @@ export default function TakeTestPage() {
             >
               <div 
                 className="prose max-w-none"
-                dangerouslySetInnerHTML={{ __html: currentQuestion.readingPassage }}
+                data-question-id={currentQuestion.id}
                 style={{ 
+                  fontFamily: 'var(--font-noto-serif), serif',
                   userSelect: highlightMode ? 'text' : 'auto',
                   cursor: highlightMode ? 'text' : 'default'
+                }}
+                onMouseUp={() => handleTextSelection(currentQuestion.id)}
+                dangerouslySetInnerHTML={{ 
+                  __html: renderPassageWithHighlights(currentQuestion.readingPassage || '', currentQuestion.id)
                 }}
               />
             </div>
@@ -718,7 +1093,7 @@ export default function TakeTestPage() {
           ) : currentQuestion && (
             <div>
               {/* Question Header - Bluebook Style */}
-              <div className="flex items-center gap-4 mb-6">
+              <div className="flex items-center gap-4 mb-6 p-4 rounded-lg" style={{ backgroundColor: '#eaedfc' }}>
                 <div className="bg-black text-white w-10 h-10 flex items-center justify-center font-bold text-lg flex-shrink-0">
                   {currentQuestionIndex + 1}
                 </div>
@@ -750,6 +1125,7 @@ export default function TakeTestPage() {
               {/* Question Text */}
               <div
                 className="prose max-w-none mb-6"
+                style={{ fontFamily: 'var(--font-noto-serif), serif' }}
                 dangerouslySetInnerHTML={{ __html: currentQuestion.questionText }}
               />
 
@@ -845,7 +1221,12 @@ export default function TakeTestPage() {
       </div>
 
       {/* Bottom Footer - Bluebook Style - EXACT MATCH */}
-      <footer className="bg-[#e6f2ff] text-gray-900 px-6 py-3 flex items-center justify-between border-t border-gray-300" style={{ backgroundColor: '#e6f2ff' }}>
+      <footer className="text-gray-900 px-6 py-3 flex items-center justify-between relative" style={{ backgroundColor: '#eaedfc' }}>
+        {/* Dashed border above footer */}
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ 
+          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 8px, transparent 8px, transparent 16px)',
+          height: '1px'
+        }}></div>
         {/* Left: Student Name */}
         <div className="text-sm font-medium">{studentName}</div>
         
@@ -866,7 +1247,8 @@ export default function TakeTestPage() {
             variant="ghost"
             onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
             disabled={currentQuestionIndex === 0}
-            className="text-gray-900 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-gray-900 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-full"
+            style={{ backgroundColor: '#314dcc', color: 'white' }}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -879,7 +1261,8 @@ export default function TakeTestPage() {
                 handleNextSection()
               }
             }}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="rounded-full text-white"
+            style={{ backgroundColor: '#314dcc' }}
           >
             {currentQuestionIndex < currentQuestions.length - 1 ? (
               <>
