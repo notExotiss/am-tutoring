@@ -960,7 +960,7 @@ export default function AssignmentManagement() {
       )}
 
       {/* Assignments and Folders with Drag and Drop */}
-      {/* @ts-expect-error - dnd-kit DndContext type compatibility */}
+      {/* @ts-ignore - dnd-kit DndContext type compatibility */}
       <DndContext
          sensors={sensors}
          collisionDetection={closestCenter}
