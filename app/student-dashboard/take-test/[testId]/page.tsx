@@ -498,14 +498,19 @@ export default function TakeTestPage() {
     const passageElement = document.querySelector(`[data-question-id="${questionId}"]`)
     if (!passageElement || !passageElement.contains(range.commonAncestorContainer)) return
     
-    // Get text content and offsets
-    const passageText = passageElement.textContent || ''
     const selectedText = selection.toString().trim()
     if (!selectedText) return
     
-    // Find the start and end positions in the text
-    const startOffset = range.startOffset
-    const endOffset = range.endOffset
+    // Calculate absolute positions relative to the passage element
+    const passageText = passageElement.textContent || ''
+    const rangeClone = range.cloneRange()
+    rangeClone.setStartBefore(passageElement)
+    rangeClone.setEnd(range.startContainer, range.startOffset)
+    const startOffset = rangeClone.toString().length
+    
+    rangeClone.setStartBefore(passageElement)
+    rangeClone.setEnd(range.endContainer, range.endOffset)
+    const endOffset = rangeClone.toString().length
     
     // Create highlight
     const highlightId = `${Date.now()}-${Math.random()}`

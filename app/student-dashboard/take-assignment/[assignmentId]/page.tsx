@@ -425,8 +425,16 @@ export default function TakeAssignmentPage() {
     const selectedText = selection.toString().trim()
     if (!selectedText) return
     
-    const startOffset = range.startOffset
-    const endOffset = range.endOffset
+    // Calculate absolute positions relative to the passage element
+    const passageText = passageElement.textContent || ''
+    const rangeClone = range.cloneRange()
+    rangeClone.setStartBefore(passageElement)
+    rangeClone.setEnd(range.startContainer, range.startOffset)
+    const startOffset = rangeClone.toString().length
+    
+    rangeClone.setStartBefore(passageElement)
+    rangeClone.setEnd(range.endContainer, range.endOffset)
+    const endOffset = rangeClone.toString().length
     
     const highlightId = `${Date.now()}-${Math.random()}`
     const newHighlights = { ...highlights }
@@ -436,6 +444,7 @@ export default function TakeAssignmentPage() {
     newHighlights[questionId].push({ start: startOffset, end: endOffset, id: highlightId })
     setHighlights(newHighlights)
     
+    // Clear selection
     selection.removeAllRanges()
   }
 
@@ -1319,7 +1328,7 @@ export default function TakeAssignmentPage() {
       {showCalculator && (
         // @ts-ignore - react-draggable Draggable type compatibility
         <Draggable handle=".drag-handle" bounds="parent">
-          <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-[900px] max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-[800px] h-[600px] flex flex-col">
             <div className="bg-gray-100 px-4 py-2 flex items-center justify-between drag-handle cursor-move border-b">
               <span className="font-semibold text-sm">Calculator</span>
               <button
@@ -1331,9 +1340,10 @@ export default function TakeAssignmentPage() {
             </div>
             <div className="flex-1">
               <iframe
-                src="https://www.desmos.com/calculator"
+                src="https://www.desmos.com/testing/cb-sat-ap/graphing"
                 className="w-full h-full border-0"
                 title="Desmos Calculator"
+                allow="clipboard-read; clipboard-write"
               />
             </div>
           </div>

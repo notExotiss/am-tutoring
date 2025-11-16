@@ -771,8 +771,8 @@ export default function TestManagement() {
                               }`}
                               style={{
                                 borderRadius: '6px',
-                                minWidth: '40px',
-                                height: '36px',
+                                width: '40px',
+                                height: '40px',
                                 borderWidth: isSelected ? '2px' : '1px',
                                 borderColor: isSelected ? '#000000' : '#d1d5db',
                               }}
@@ -786,18 +786,27 @@ export default function TestManagement() {
                       
                       {(() => {
                         const currentQ = editingTest.questions[currentQuestionIndex]
-                        // Only show editor if current question is in this module
-                        if (currentQ && currentQ.section === module.split('-')[0] && currentQ.module === parseInt(module.split('-')[1])) {
-                          return (
-                            <TestQuestionEditor
-                              key={currentQ.id}
-                              question={currentQ}
-                              onUpdate={(updated) => updateQuestion(currentQ.id, updated)}
-                              onDelete={() => deleteQuestion(currentQ.id)}
-                            />
-                          )
+                        // Show editor if current question is in this module, or if no question is selected but we're in this module
+                        if (currentQ) {
+                          const moduleSection = module.split('-')[0]
+                          const moduleNumber = parseInt(module.split('-')[1])
+                          if (currentQ.section === moduleSection && currentQ.module === moduleNumber) {
+                            return (
+                              <TestQuestionEditor
+                                key={currentQ.id}
+                                question={currentQ}
+                                onUpdate={(updated) => updateQuestion(currentQ.id, updated)}
+                                onDelete={() => deleteQuestion(currentQ.id)}
+                              />
+                            )
+                          }
                         }
-                        return null
+                        // If no question selected or question is in different module, show empty state
+                        return (
+                          <div className="text-center py-12 text-gray-500">
+                            <p>Click on a question number above to create or edit a question.</p>
+                          </div>
+                        )
                       })()}
                     </TabsContent>
                   )

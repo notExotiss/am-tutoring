@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, doc, getDocs, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore'
+import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, orderBy } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -60,12 +60,13 @@ interface Folder {
   studentIds?: string[]
 }
 
-function DroppableFolder({ id, name, description, children, onAssign }: { 
+function DroppableFolder({ id, name, description, children, onAssign, onDelete }: { 
   id: string, 
   name: string, 
   description: string, 
   children: React.ReactNode,
-  onAssign?: () => void
+  onAssign?: () => void,
+  onDelete?: () => void
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: id,
@@ -85,12 +86,19 @@ function DroppableFolder({ id, name, description, children, onAssign }: {
             <Folder className="w-5 h-5 text-blue-600" />
             <CardTitle>{name}</CardTitle>
           </div>
-          {onAssign && (
-            <Button variant="outline" size="sm" onClick={onAssign}>
-              <Users className="w-4 h-4 mr-2" />
-              Assign
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {onAssign && (
+              <Button variant="outline" size="sm" onClick={onAssign}>
+                <Users className="w-4 h-4 mr-2" />
+                Assign
+              </Button>
+            )}
+            {onDelete && id !== 'unassigned' && (
+              <Button variant="outline" size="sm" onClick={onDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
@@ -460,6 +468,42 @@ export default function AssignmentManagement() {
       toast({
         title: 'Error',
         description: 'Failed to create folder.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleDeleteFolder = async (folderId: string) => {
+    if (!db || !confirm('Are you sure you want to delete this folder? Assignments in this folder will be moved to unassigned.')) {
+      return
+    }
+
+    try {
+      // Move all assignments in this folder to unassigned
+      const folderAssignments = assignments.filter(a => a.folderId === folderId)
+      for (const assignment of folderAssignments) {
+        const { folderName, studentNames, ...assignmentData } = assignment
+        const assignmentRef = doc(db, 'assignments', assignment.id || '')
+        await updateDoc(assignmentRef, {
+          ...assignmentData,
+          folderId: null,
+        })
+      }
+
+      // Delete the folder
+      await deleteDoc(doc(db, 'folders', folderId))
+
+      toast({
+        title: 'Success',
+        description: 'Folder deleted successfully!',
+      })
+
+      await loadData()
+    } catch (error) {
+      console.error('Error deleting folder:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to delete folder.',
         variant: 'destructive',
       })
     }
@@ -1225,6 +1269,7 @@ export default function AssignmentManagement() {
                 name={folder?.name || 'Unknown Folder'}
                 description="Drop assignments here to organize them"
                 onAssign={() => folder && setShowAssignFolderDialog(folder)}
+                onDelete={() => folder && handleDeleteFolder(folder.id)}
               >
                 <SortableContext
                   items={folderAssignments.map(a => a.id || '')}
@@ -1252,6 +1297,7 @@ export default function AssignmentManagement() {
               name={folder.name}
               description="Empty folder - drag assignments here"
               onAssign={() => setShowAssignFolderDialog(folder)}
+              onDelete={() => handleDeleteFolder(folder.id)}
             >
               <div className="text-center py-8 text-gray-500 text-sm">
                 No assignments in this folder
