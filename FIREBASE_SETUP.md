@@ -42,36 +42,62 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
 ## Step 6: Firestore Security Rules
 
-Update your Firestore security rules to allow authenticated users to manage all students. Since this is a tutoring management system, the authorized tutor needs access to all student records:
+Update your Firestore security rules to allow authenticated users to manage all students, assignments, tests, and folders. Students can read their own assignments and tests:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users to read/write all students
-    // In production, you may want to restrict this to specific email addresses
+    // Students collection - admin can manage all, students can read their own
     match /students/{studentId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        request.auth.token.email == 'iamaaritmalhotra@gmail.com';
     }
-  }
-}
-```
-
-**For Production (More Secure):**
-
-If you want to restrict access to only your authorized email address, use this instead:
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /students/{studentId} {
+    
+    // Assignments collection - admin can manage all, students can read their own
+    match /assignments/{assignmentId} {
+      allow read: if request.auth != null && 
+        (request.auth.token.email == 'iamaaritmalhotra@gmail.com' ||
+         resource.data.studentId == get(/databases/$(database)/documents/students/$(get(/databases/$(database)/documents/assignments/$(assignmentId)).data.studentId)).data.email);
+      allow write: if request.auth != null && 
+        request.auth.token.email == 'iamaaritmalhotra@gmail.com';
+    }
+    
+    // Tests collection - admin can manage all, students can read their own
+    match /tests/{testId} {
+      allow read: if request.auth != null && 
+        (request.auth.token.email == 'iamaaritmalhotra@gmail.com' ||
+         resource.data.studentId == get(/databases/$(database)/documents/students/$(get(/databases/$(database)/documents/tests/$(testId)).data.studentId)).data.email);
+      allow write: if request.auth != null && 
+        request.auth.token.email == 'iamaaritmalhotra@gmail.com';
+    }
+    
+    // Folders collection - admin only
+    match /folders/{folderId} {
       allow read, write: if request.auth != null && 
         request.auth.token.email == 'iamaaritmalhotra@gmail.com';
     }
   }
 }
 ```
+
+**Simplified Version (Less Secure, for Testing):**
+
+For easier testing, you can use this simpler version that allows all authenticated users to read/write:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+**Note:** The simplified version is less secure and should only be used for testing. For production, use the more restrictive rules above.
 
 **To Update Security Rules:**
 1. Go to Firebase Console > Firestore Database
