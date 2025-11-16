@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { User, onAuthStateChanged, signOut } from 'firebase/auth'
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
@@ -100,6 +100,66 @@ export default function StudentStats() {
       return
     }
     
+    const loadData = async (uid: string, email?: string) => {
+      if (!db) {
+        console.error('Firestore is not initialized')
+        return
+      }
+      
+      try {
+        const docRef = doc(db, 'students', uid)
+        const docSnap = await getDoc(docRef)
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data() as StudentData
+          setStudentData(data)
+        } else {
+          // Initialize with user email - create fresh initial data
+          const initialData: StudentData = {
+            name: '',
+            email: email || '',
+            phone: '',
+            parentContact: '',
+            satTarget: '',
+            testDate: '',
+            goals: '',
+            strengths: '',
+            weaknesses: '',
+            math: {
+              currentScore: '',
+              accuracy: '',
+              errorType: '',
+              pacingNotes: '',
+              nextSessionFocus: '',
+            },
+            reading: {
+              currentScore: '',
+              accuracy: '',
+              errorType: '',
+              pacingNotes: '',
+              nextSessionFocus: '',
+            },
+            writing: {
+              currentScore: '',
+              accuracy: '',
+              errorType: '',
+              pacingNotes: '',
+              nextSessionFocus: '',
+            },
+            sessions: [],
+            errors: '',
+            practiceTests: '',
+            growthSummary: '',
+          }
+          await setDoc(docRef, initialData as any)
+          setStudentData(initialData)
+        }
+      } catch (error) {
+        console.error('Error loading student data:', error)
+        alert('Failed to load student data. Please refresh the page.')
+      }
+    }
+    
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user || user.email !== 'iamaaritmalhotra@gmail.com') {
         router.push('/sign-in')
@@ -107,39 +167,12 @@ export default function StudentStats() {
       }
       setUser(user)
       setLoading(false)
-      await loadStudentData(user.uid, user.email || undefined)
+      await loadData(user.uid, user.email || undefined)
     })
 
     return () => unsubscribe()
   }, [router])
 
-  const loadStudentData = async (uid: string, userEmail?: string) => {
-    if (!db) {
-      console.error('Firestore is not initialized')
-      return
-    }
-    
-    try {
-      const docRef = doc(db, 'students', uid)
-      const docSnap = await getDoc(docRef)
-      
-      if (docSnap.exists()) {
-        const data = docSnap.data() as StudentData
-        setStudentData(data)
-      } else {
-        // Initialize with user email
-        const initialData: StudentData = {
-          ...studentData,
-          email: userEmail || '',
-        }
-        await setDoc(docRef, initialData)
-        setStudentData(initialData)
-      }
-    } catch (error) {
-      console.error('Error loading student data:', error)
-      alert('Failed to load student data. Please refresh the page.')
-    }
-  }
 
   const handleSave = async () => {
     if (!user || !db) {
@@ -150,13 +183,27 @@ export default function StudentStats() {
     setSaving(true)
     try {
       const docRef = doc(db, 'students', user.uid)
-      await updateDoc(docRef, studentData)
+      await updateDoc(docRef, studentData as any)
       alert('Data saved successfully!')
     } catch (error) {
       console.error('Error saving data:', error)
       alert('Failed to save data. Please try again.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleSignOut = async () => {
+    if (!auth) {
+      router.push('/sign-in')
+      return
+    }
+    try {
+      await signOut(auth)
+      router.push('/sign-in')
+    } catch (error) {
+      console.error('Error signing out:', error)
+      alert('Failed to sign out.')
     }
   }
 
@@ -217,7 +264,7 @@ export default function StudentStats() {
               <Save className="w-4 h-4" />
               {saving ? 'Saving...' : 'Save'}
             </Button>
-            <Button variant="outline" onClick={() => signOut(auth)}>
+            <Button variant="outline" onClick={handleSignOut}>
               Sign Out
             </Button>
           </div>
