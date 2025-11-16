@@ -334,7 +334,13 @@ export default function TakeTestPage() {
       description: 'Time has run out for this section.',
       variant: 'destructive',
     })
-    handleNextSection()
+    // If in break, allow continuing
+    if (testState === 'break') {
+      handleNextSection()
+    } else {
+      // For other sections, show review page
+      setShowReviewPage(true)
+    }
   }
 
   const handleNextSection = () => {
@@ -733,10 +739,22 @@ export default function TakeTestPage() {
               onClick={() => {
                 if (test.timeLimitEnabled && timeRemaining > 0) {
                   if (confirm('Are you sure you want to skip the break? You still have time remaining.')) {
-                    handleNextSection()
+                    // Skip break directly without review page
+                    setTestState('math-m1')
+                    const mathM1Time = test?.mathModule1Time || 35
+                    if (test?.timeLimitEnabled) setTimeRemaining(mathM1Time * 60)
+                    setCurrentQuestionIndex(0)
+                    setIsPaused(false)
+                    setShowReviewPage(false)
                   }
                 } else {
-                  handleNextSection()
+                  // Skip break directly without review page
+                  setTestState('math-m1')
+                  const mathM1Time = test?.mathModule1Time || 35
+                  if (test?.timeLimitEnabled) setTimeRemaining(mathM1Time * 60)
+                  setCurrentQuestionIndex(0)
+                  setIsPaused(false)
+                  setShowReviewPage(false)
                 }
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
@@ -861,7 +879,7 @@ export default function TakeTestPage() {
       <header className="px-6 py-3 flex items-center justify-between relative" style={{ backgroundColor: '#eaedfc' }}>
         {/* Dashed border below header */}
         <div className="absolute bottom-0 left-0 right-0" style={{ 
-          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 48px)',
+          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 32px)',
           height: '3px'
         }}></div>
         {/* Left: Section Title */}
@@ -1301,7 +1319,7 @@ export default function TakeTestPage() {
       <footer className="text-gray-900 px-6 py-3 flex items-center justify-between relative" style={{ backgroundColor: '#eaedfc' }}>
         {/* Dashed border above footer */}
         <div className="absolute top-0 left-0 right-0" style={{ 
-          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 48px)',
+          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 32px)',
           height: '3px'
         }}></div>
         {/* Left: Student Name */}

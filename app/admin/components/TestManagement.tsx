@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Trash2, CalendarIcon, FileText, X, Edit, Save, ChevronLeft, ChevronRight, Users } from 'lucide-react'
+import { Plus, Trash2, CalendarIcon, FileText, X, Edit, Save, ChevronLeft, ChevronRight, Users, Eye } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -81,6 +81,10 @@ export default function TestManagement() {
     mathM1: true,
     mathM2: true,
   })
+  const [viewingSubmissions, setViewingSubmissions] = useState<Test | null>(null)
+  const [submissions, setSubmissions] = useState<any[]>([])
+  const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null)
+  const [currentQuestionViewIndex, setCurrentQuestionViewIndex] = useState(0)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -173,6 +177,47 @@ export default function TestManagement() {
     setEditingTest({ ...test })
     setShowForm(true)
     setCurrentQuestionIndex(0)
+  }
+
+  const handleViewSubmissions = async (test: Test) => {
+    if (!db || !test.id) return
+    
+    try {
+      setViewingSubmissions(test)
+      const submissionsRef = collection(db, 'testProgress')
+      const querySnapshot = await getDocs(submissionsRef)
+      
+      const submissionsList: any[] = []
+      querySnapshot.forEach((doc) => {
+        const data = doc.data()
+        // Check if this submission is for this test
+        if (data.testId === test.id && data.testState === 'completed') {
+          // Get student info
+          const userId = data.userId
+          const student = students.find(s => s.id === userId)
+          submissionsList.push({
+            id: doc.id,
+            ...data,
+            studentName: student?.name || 'Unknown Student',
+            studentEmail: student?.email || '',
+            updatedAt: data.updatedAt?.toDate() || null,
+          })
+        }
+      })
+      
+      setSubmissions(submissionsList)
+      if (submissionsList.length > 0) {
+        setSelectedSubmission(submissionsList[0])
+        setCurrentQuestionViewIndex(0)
+      }
+    } catch (error) {
+      console.error('Error loading submissions:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load submissions.',
+        variant: 'destructive',
+      })
+    }
   }
 
   const initializeQuestions = (test: Test): Test => {
@@ -383,15 +428,20 @@ export default function TestManagement() {
     }
   }
 
-  // Group tests by student
+  // Separate unassigned tests
+  const unassignedTests = tests.filter(test => !test.studentIds || test.studentIds.length === 0)
+  
+  // Group assigned tests by student
   const testsByStudent = new Map<string, Test[]>()
   tests.forEach(test => {
-    test.studentIds.forEach(studentId => {
-      if (!testsByStudent.has(studentId)) {
-        testsByStudent.set(studentId, [])
-      }
-      testsByStudent.get(studentId)!.push(test)
-    })
+    if (test.studentIds && test.studentIds.length > 0) {
+      test.studentIds.forEach(studentId => {
+        if (!testsByStudent.has(studentId)) {
+          testsByStudent.set(studentId, [])
+        }
+        testsByStudent.get(studentId)!.push(test)
+      })
+    }
   })
 
   if (showForm && editingTest) {
@@ -669,21 +719,42 @@ export default function TestManagement() {
                   
                   return (
                     <TabsContent key={module} value={module} className="mt-4">
-                      <div className="grid grid-cols-9 gap-2 mb-6">
-                        {moduleQuestions.map((q, idx) => {
-                          const globalIndex = editingTest.questions.findIndex(qu => qu.id === q.id)
+                      <div className="grid grid-cols-9 gap-0.5 mb-6">
+                        {Array.from({ length: 27 }, (_, idx) => {
+                          const question = moduleQuestions[idx]
+                          const globalIndex = question ? editingTest.questions.findIndex(qu => qu.id === question.id) : -1
                           return (
                             <button
-                              key={q.id}
-                              onClick={() => setCurrentQuestionIndex(globalIndex)}
-                              className={`w-12 h-12 rounded border-2 flex items-center justify-center text-sm font-semibold ${
-                                globalIndex === currentQuestionIndex
+                              key={idx}
+                              onClick={() => {
+                                if (question && globalIndex >= 0) {
+                                  setCurrentQuestionIndex(globalIndex)
+                                } else {
+                                  // Create new question for this position
+                                  const newQuestion: Question = {
+                                    id: `q-${Date.now()}-${idx}`,
+                                    questionText: '',
+                                    options: ['', '', '', ''],
+                                    correctAnswer: 0,
+                                    module: module === 'english-m1' ? 1 : module === 'english-m2' ? 2 : module === 'math-m1' ? 1 : 2,
+                                    section: (module.startsWith('english') ? 'english' : 'math') as 'english' | 'math',
+                                    questionType: 'multiple-choice' as const,
+                                  }
+                                  const allQuestions = [...editingTest.questions, newQuestion]
+                                  setEditingTest({ ...editingTest, questions: allQuestions })
+                                  setCurrentQuestionIndex(allQuestions.length - 1)
+                                }
+                              }}
+                              className={`w-10 h-10 rounded border-2 flex items-center justify-center text-xs font-semibold ${
+                                globalIndex >= 0 && globalIndex === currentQuestionIndex
                                   ? 'border-blue-600 bg-blue-50 text-blue-700'
-                                  : q.questionText
+                                  : question && question.questionText
                                   ? 'border-green-500 bg-green-50 text-green-700'
-                                  : 'border-gray-300 bg-gray-50 text-gray-700'
+                                  : question
+                                  ? 'border-gray-300 bg-gray-50 text-gray-700'
+                                  : 'border-gray-200 bg-gray-100 text-gray-400 hover:border-gray-300'
                               }`}
-                              title={`Question ${idx + 1}${q.questionText ? ' (Has content)' : ' (Empty)'}`}
+                              title={question ? `Question ${idx + 1}${question.questionText ? ' (Has content)' : ' (Empty)'}` : `Question ${idx + 1} (Click to create)`}
                             >
                               {idx + 1}
                             </button>
@@ -691,9 +762,7 @@ export default function TestManagement() {
                         })}
                       </div>
                       
-                      {currentQuestion && editingTest.questions[currentQuestionIndex] && 
-                       (editingTest.questions[currentQuestionIndex].section === module.split('-')[0] && 
-                        editingTest.questions[currentQuestionIndex].module === parseInt(module.split('-')[1])) && (
+                      {currentQuestion && editingTest.questions[currentQuestionIndex] && (
                         <TestQuestionEditor
                           question={currentQuestion}
                           onUpdate={(updated) => updateQuestion(currentQuestion.id, updated)}
@@ -736,6 +805,71 @@ export default function TestManagement() {
         </Card>
       ) : (
         <div className="space-y-6">
+          {/* Unassigned Tests */}
+          {unassignedTests.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-gray-600" />
+                  Unassigned Tests
+                </CardTitle>
+                <CardDescription>Tests that haven&apos;t been assigned to any students yet</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {unassignedTests.map((test) => (
+                    <div key={test.id} className="border-l-4 border-gray-500 pl-4 py-3 bg-gray-50 rounded-r">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-semibold text-lg">{test.title}</h3>
+                            <Badge>{test.questions.length} questions</Badge>
+                            {test.timeLimitEnabled && <Badge variant="secondary">Timed</Badge>}
+                          </div>
+                          <p className="text-gray-600 text-sm mb-2">{test.description}</p>
+                          <div className="flex gap-4 text-xs text-gray-500">
+                            {test.assignedDate && (
+                              <span>Created: {format(test.assignedDate, 'MMM dd, yyyy')}</span>
+                            )}
+                            {test.dueDate && (
+                              <span>Due: {format(test.dueDate, 'MMM dd, yyyy')}</span>
+                            )}
+                          </div>
+                        </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleViewSubmissions(test)}
+                              title="View Submissions"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditTest(test)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => test.id && handleDelete(test.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Assigned Tests by Student */}
           {Array.from(testsByStudent.entries()).map(([studentId, studentTests]) => {
             const student = students.find(s => s.id === studentId)
             return (
@@ -778,6 +912,14 @@ export default function TestManagement() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => handleViewSubmissions(test)}
+                              title="View Submissions"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => handleEditTest(test)}
                             >
                               <Edit className="w-4 h-4" />
@@ -799,6 +941,191 @@ export default function TestManagement() {
               </Card>
             )
           })}
+        </div>
+      )}
+
+      {/* View Submissions Modal */}
+      {viewingSubmissions && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+            <CardHeader className="flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Submissions: {viewingSubmissions.title}</CardTitle>
+                  <CardDescription>{submissions.length} submission{submissions.length !== 1 ? 's' : ''}</CardDescription>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => {
+                  setViewingSubmissions(null)
+                  setSubmissions([])
+                  setSelectedSubmission(null)
+                }}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden flex flex-col">
+              {submissions.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No submissions yet.</p>
+                </div>
+              ) : (
+                <div className="flex gap-4 h-full overflow-hidden">
+                  {/* Student List */}
+                  <div className="w-64 border-r pr-4 overflow-y-auto">
+                    <h3 className="font-semibold mb-3">Students</h3>
+                    <div className="space-y-2">
+                      {submissions.map((submission) => (
+                        <button
+                          key={submission.id}
+                          onClick={() => {
+                            setSelectedSubmission(submission)
+                            setCurrentQuestionViewIndex(0)
+                          }}
+                          className={`w-full text-left p-3 rounded border-2 transition-colors ${
+                            selectedSubmission?.id === submission.id
+                              ? 'border-blue-600 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="font-semibold">{submission.studentName}</div>
+                          {submission.updatedAt && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {format(submission.updatedAt, 'MMM dd, yyyy HH:mm')}
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Question View */}
+                  {selectedSubmission && viewingSubmissions && (() => {
+                    // Get all questions from all modules
+                    const allQuestions = viewingSubmissions.questions
+                    const currentQuestion = allQuestions[currentQuestionViewIndex]
+                    const studentAnswer = currentQuestion?.questionType === 'open-ended' 
+                      ? selectedSubmission.openEndedAnswers?.[currentQuestion?.id]
+                      : selectedSubmission.answers?.[currentQuestion?.id]
+                    const correctAnswer = currentQuestion?.correctAnswer
+                    const isCorrect = currentQuestion?.questionType === 'open-ended'
+                      ? String(studentAnswer || '').trim() === String(correctAnswer || '').trim()
+                      : studentAnswer === correctAnswer
+                    
+                    return (
+                      <div className="flex-1 overflow-y-auto">
+                        <div className="mb-4 flex items-center justify-between">
+                          <h3 className="text-lg font-semibold">{selectedSubmission.studentName}&apos;s Answers</h3>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => setCurrentQuestionViewIndex(Math.max(0, currentQuestionViewIndex - 1))}
+                              disabled={currentQuestionViewIndex === 0}
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </Button>
+                            <span className="text-sm font-medium px-2">
+                              Question {currentQuestionViewIndex + 1} of {allQuestions.length}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => setCurrentQuestionViewIndex(Math.min(allQuestions.length - 1, currentQuestionViewIndex + 1))}
+                              disabled={currentQuestionViewIndex === allQuestions.length - 1}
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        {currentQuestion && (
+                          <div className="space-y-4">
+                            <div className="p-4 rounded-lg" style={{ backgroundColor: '#eaedfc' }}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="bg-black text-white w-8 h-8 flex items-center justify-center font-bold text-sm">
+                                  {currentQuestionViewIndex + 1}
+                                </div>
+                                <Badge className={isCorrect ? 'bg-green-600' : 'bg-red-600'}>
+                                  {isCorrect ? 'Correct' : 'Incorrect'}
+                                </Badge>
+                              </div>
+                            </div>
+                            
+                            <div
+                              className="prose max-w-none mb-4"
+                              dangerouslySetInnerHTML={{ __html: currentQuestion.questionText }}
+                            />
+                            
+                            {currentQuestion.questionImage && (
+                              <div className="mb-4">
+                                <img
+                                  src={currentQuestion.questionImage}
+                                  alt="Question"
+                                  className="max-w-full max-h-[400px] rounded"
+                                />
+                              </div>
+                            )}
+                            
+                            {currentQuestion.readingPassage && (
+                              <div className="mb-4 p-4 border rounded bg-gray-50">
+                                <div
+                                  className="prose max-w-none"
+                                  dangerouslySetInnerHTML={{ __html: currentQuestion.readingPassage }}
+                                />
+                              </div>
+                            )}
+                            
+                            {currentQuestion.questionType === 'open-ended' ? (
+                              <div className="space-y-2">
+                                <div className="p-4 border-2 rounded-lg">
+                                  <div className="text-sm text-gray-600 mb-1">Student Answer:</div>
+                                  <div className="text-lg font-mono">{studentAnswer || '(empty)'}</div>
+                                </div>
+                                <div className={`p-4 border-2 rounded-lg ${isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+                                  <div className="text-sm text-gray-600 mb-1">Correct Answer:</div>
+                                  <div className="text-lg font-mono">{String(correctAnswer)}</div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {currentQuestion.options.map((option: string, index: number) => {
+                                  const isSelected = studentAnswer === index
+                                  const isCorrectOption = correctAnswer === index
+                                  return (
+                                    <div
+                                      key={index}
+                                      className={`p-4 border-2 rounded-lg ${
+                                        isCorrectOption
+                                          ? 'border-green-500 bg-green-50'
+                                          : isSelected
+                                          ? 'border-red-500 bg-red-50'
+                                          : 'border-gray-200'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-semibold w-6">{String.fromCharCode(65 + index)}</span>
+                                        <span>{option}</span>
+                                        {isCorrectOption && (
+                                          <Badge className="ml-auto bg-green-600">Correct</Badge>
+                                        )}
+                                        {isSelected && !isCorrectOption && (
+                                          <Badge className="ml-auto bg-red-600">Selected</Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

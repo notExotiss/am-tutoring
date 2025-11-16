@@ -708,7 +708,7 @@ export default function TakeAssignmentPage() {
       {/* Top Header */}
       <header className="px-6 py-3 flex items-center justify-between relative" style={{ backgroundColor: '#eaedfc' }}>
         <div className="absolute bottom-0 left-0 right-0" style={{ 
-          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 48px)',
+          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 32px)',
           height: '3px'
         }}></div>
         <div className="flex items-center gap-4">
@@ -1088,7 +1088,7 @@ export default function TakeAssignmentPage() {
 
       <footer className="text-gray-900 px-6 py-3 flex items-center justify-between relative" style={{ backgroundColor: '#eaedfc' }}>
         <div className="absolute top-0 left-0 right-0" style={{ 
-          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 48px)',
+          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 32px)',
           height: '3px'
         }}></div>
         <div className="text-sm font-medium">{studentName}</div>
