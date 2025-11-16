@@ -959,9 +959,9 @@ export default function AssignmentManagement() {
         </Card>
       )}
 
-       {/* Assignments and Folders with Drag and Drop */}
-       {/* @ts-expect-error - dnd-kit DndContext type compatibility */}
-       <DndContext
+      {/* Assignments and Folders with Drag and Drop */}
+      {/* @ts-expect-error - dnd-kit DndContext type compatibility */}
+      <DndContext
          sensors={sensors}
          collisionDetection={closestCenter}
          onDragStart={(event) => setActiveId(event.active.id as string)}
