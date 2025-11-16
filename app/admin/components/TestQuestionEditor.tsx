@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Bold, Italic, Underline as UnderlineIcon, Image as ImageIcon, X } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import 'katex/dist/katex.min.css'
 
 interface Question {
@@ -36,6 +36,7 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
   const [showImageInput, setShowImageInput] = useState(false)
   const [imageUrl, setImageUrl] = useState(question.questionImage || '')
   const [showReadingPassageEditor, setShowReadingPassageEditor] = useState(!!question.readingPassage)
+  const isUpdatingFromProps = useRef(false)
 
   const questionEditor = useEditor({
     extensions: [
@@ -49,6 +50,7 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
     ],
     content: question.questionText,
     onUpdate: ({ editor }) => {
+      if (isUpdatingFromProps.current) return
       const currentContent = editor.getHTML()
       onUpdate({
         ...question,
@@ -69,6 +71,7 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
     ],
     content: question.readingPassage || '',
     onUpdate: ({ editor }) => {
+      if (isUpdatingFromProps.current) return
       const currentContent = editor.getHTML()
       onUpdate({
         ...question,
@@ -84,7 +87,12 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
       const newContent = question.questionText || ''
       // Only update if content is actually different
       if (currentContent !== newContent) {
-        questionEditor.commands.setContent(newContent, { emitUpdate: false })
+        isUpdatingFromProps.current = true
+        questionEditor.commands.setContent(newContent)
+        // Reset flag after a short delay to allow the update to complete
+        setTimeout(() => {
+          isUpdatingFromProps.current = false
+        }, 0)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,7 +104,12 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
       const newContent = question.readingPassage || ''
       // Only update if content is actually different
       if (currentContent !== newContent) {
-        passageEditor.commands.setContent(newContent, { emitUpdate: false })
+        isUpdatingFromProps.current = true
+        passageEditor.commands.setContent(newContent)
+        // Reset flag after a short delay to allow the update to complete
+        setTimeout(() => {
+          isUpdatingFromProps.current = false
+        }, 0)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

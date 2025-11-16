@@ -741,6 +741,7 @@ export default function TestManagement() {
                         {Array.from({ length: 27 }, (_, idx) => {
                           const question = moduleQuestions[idx]
                           const globalIndex = question ? editingTest.questions.findIndex(qu => qu.id === question.id) : -1
+                          const isSelected = globalIndex >= 0 && globalIndex === currentQuestionIndex
                           return (
                             <button
                               key={idx}
@@ -763,15 +764,18 @@ export default function TestManagement() {
                                   setCurrentQuestionIndex(allQuestions.length - 1)
                                 }
                               }}
-                              className={`w-10 h-10 rounded border-2 flex items-center justify-center text-xs font-semibold ${
-                                globalIndex >= 0 && globalIndex === currentQuestionIndex
-                                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                                  : question && question.questionText
-                                  ? 'border-green-500 bg-green-50 text-green-700'
-                                  : question
-                                  ? 'border-gray-300 bg-gray-50 text-gray-700'
-                                  : 'border-gray-200 bg-gray-100 text-gray-400 hover:border-gray-300'
+                              className={`flex items-center justify-center text-sm font-medium transition-all ${
+                                isSelected
+                                  ? 'border-2 border-black bg-white text-black'
+                                  : 'border border-gray-300 bg-white text-black hover:border-gray-400'
                               }`}
+                              style={{
+                                borderRadius: '6px',
+                                minWidth: '40px',
+                                height: '36px',
+                                borderWidth: isSelected ? '2px' : '1px',
+                                borderColor: isSelected ? '#000000' : '#d1d5db',
+                              }}
                               title={question ? `Question ${idx + 1}${question.questionText ? ' (Has content)' : ' (Empty)'}` : `Question ${idx + 1} (Click to create)`}
                             >
                               {idx + 1}
