@@ -945,7 +945,7 @@ export default function TakeTestPage() {
 
       {/* Reference Sheet Popup */}
       {showReferenceSheet && (
-        // @ts-expect-error - react-draggable Draggable type compatibility
+        // @ts-ignore - react-draggable Draggable type compatibility
         <Draggable handle=".drag-handle" bounds="parent">
           <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-96 max-h-[80vh] overflow-hidden flex flex-col">
             <div className="bg-gray-100 px-4 py-2 flex items-center justify-between drag-handle cursor-move border-b">
@@ -970,7 +970,7 @@ export default function TakeTestPage() {
 
       {/* Calculator Popup (Desmos) */}
       {showCalculator && (
-        // @ts-expect-error - react-draggable Draggable type compatibility
+        // @ts-ignore - react-draggable Draggable type compatibility
         <Draggable handle=".drag-handle" bounds="parent">
           <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-[600px] h-[500px] flex flex-col">
             <div className="bg-gray-100 px-4 py-2 flex items-center justify-between drag-handle cursor-move border-b">
