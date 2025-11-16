@@ -85,6 +85,7 @@ export default function TestManagement() {
   const [submissions, setSubmissions] = useState<any[]>([])
   const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null)
   const [currentQuestionViewIndex, setCurrentQuestionViewIndex] = useState(0)
+  const [submissionActiveModule, setSubmissionActiveModule] = useState<'english-m1' | 'english-m2' | 'math-m1' | 'math-m2'>('english-m1')
   const { toast } = useToast()
 
   useEffect(() => {
@@ -825,39 +826,41 @@ export default function TestManagement() {
                         const moduleNumber = parseInt(module.split('-')[1])
                         
                         // Check if currentQuestionIndex is valid and question exists
+                        let questionToShow = null
+                        let questionIndex = -1
+                        
                         if (currentQuestionIndex >= 0 && currentQuestionIndex < editingTest.questions.length) {
                           const currentQ = editingTest.questions[currentQuestionIndex]
                           // Show editor if current question is in this module
                           if (currentQ && currentQ.section === moduleSection && currentQ.module === moduleNumber) {
-                            return (
-                              <TestQuestionEditor
-                                key={`${currentQ.id}-${currentQuestionIndex}-${module}`}
-                                question={currentQ}
-                                onUpdate={(updated) => updateQuestion(currentQ.id, updated)}
-                                onDelete={() => deleteQuestion(currentQ.id)}
-                              />
-                            )
+                            questionToShow = currentQ
+                            questionIndex = currentQuestionIndex
                           }
                         }
                         
-                        // If no question in this module is selected, show the first question in this module (only if no question is selected at all)
-                        if (currentQuestionIndex < 0 && moduleQuestions.length > 0) {
+                        // If no question in this module is selected, show the first question in this module
+                        if (!questionToShow && moduleQuestions.length > 0) {
                           const firstQuestionInModule = moduleQuestions[0]
                           const firstIndex = editingTest.questions.findIndex(q => q.id === firstQuestionInModule.id)
                           if (firstIndex >= 0) {
-                            const firstQ = editingTest.questions[firstIndex]
-                            return (
-                              <TestQuestionEditor
-                                key={`${firstQ.id}-${firstIndex}-${module}`}
-                                question={firstQ}
-                                onUpdate={(updated) => updateQuestion(firstQ.id, updated)}
-                                onDelete={() => deleteQuestion(firstQ.id)}
-                              />
-                            )
+                            questionToShow = editingTest.questions[firstIndex]
+                            questionIndex = firstIndex
                           }
                         }
                         
-                        // If no questions exist in this module or no question is selected, show empty state
+                        // Show editor if we have a question to show
+                        if (questionToShow) {
+                          return (
+                            <TestQuestionEditor
+                              key={`${questionToShow.id}-${questionIndex}-${module}`}
+                              question={questionToShow}
+                              onUpdate={(updated) => updateQuestion(questionToShow!.id, updated)}
+                              onDelete={() => deleteQuestion(questionToShow!.id)}
+                            />
+                          )
+                        }
+                        
+                        // If no questions exist in this module, show empty state
                         return (
                           <div className="text-center py-12 text-gray-500">
                             <p>Click on a question number above to create or edit a question.</p>
@@ -1095,9 +1098,16 @@ export default function TestManagement() {
                   
                   {/* Question View */}
                   {selectedSubmission && viewingSubmissions && (() => {
-                    // Get all questions from all modules
-                    const allQuestions = viewingSubmissions.questions
-                    const currentQuestion = allQuestions[currentQuestionViewIndex]
+                    // Organize questions by module
+                    const questionsByModule = {
+                      'english-m1': viewingSubmissions.questions.filter(q => q.section === 'english' && q.module === 1),
+                      'english-m2': viewingSubmissions.questions.filter(q => q.section === 'english' && q.module === 2),
+                      'math-m1': viewingSubmissions.questions.filter(q => q.section === 'math' && q.module === 1),
+                      'math-m2': viewingSubmissions.questions.filter(q => q.section === 'math' && q.module === 2),
+                    }
+                    
+                    const moduleQuestions = questionsByModule[submissionActiveModule]
+                    const currentQuestion = moduleQuestions[currentQuestionViewIndex]
                     const studentAnswer = currentQuestion?.questionType === 'open-ended' 
                       ? selectedSubmission.openEndedAnswers?.[currentQuestion?.id]
                       : selectedSubmission.answers?.[currentQuestion?.id]
@@ -1107,113 +1117,140 @@ export default function TestManagement() {
                       : studentAnswer === correctAnswer
                     
                     return (
-                      <div className="flex-1 overflow-y-auto">
-                        <div className="mb-4 flex items-center justify-between">
-                          <h3 className="text-lg font-semibold">{selectedSubmission.studentName}&apos;s Answers</h3>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setCurrentQuestionViewIndex(Math.max(0, currentQuestionViewIndex - 1))}
-                              disabled={currentQuestionViewIndex === 0}
-                            >
-                              <ChevronLeft className="w-4 h-4" />
-                            </Button>
-                            <span className="text-sm font-medium px-2">
-                              Question {currentQuestionViewIndex + 1} of {allQuestions.length}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setCurrentQuestionViewIndex(Math.min(allQuestions.length - 1, currentQuestionViewIndex + 1))}
-                              disabled={currentQuestionViewIndex === allQuestions.length - 1}
-                            >
-                              <ChevronRight className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        {currentQuestion && (
-                          <div className="space-y-4">
-                            <div className="p-4 rounded-lg" style={{ backgroundColor: '#eaedfc' }}>
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="bg-black text-white w-8 h-8 flex items-center justify-center font-bold text-sm">
-                                  {currentQuestionViewIndex + 1}
-                                </div>
-                                <Badge className={isCorrect ? 'bg-green-600' : 'bg-red-600'}>
-                                  {isCorrect ? 'Correct' : 'Incorrect'}
-                                </Badge>
-                              </div>
-                            </div>
-                            
-                            <div
-                              className="prose max-w-none mb-4"
-                              dangerouslySetInnerHTML={{ __html: currentQuestion.questionText }}
-                            />
-                            
-                            {currentQuestion.questionImage && (
-                              <div className="mb-4">
-                                <img
-                                  src={currentQuestion.questionImage}
-                                  alt="Question"
-                                  className="max-w-full max-h-[400px] rounded"
-                                />
-                              </div>
-                            )}
-                            
-                            {currentQuestion.readingPassage && (
-                              <div className="mb-4 p-4 border rounded bg-gray-50">
-                                <div
-                                  className="prose max-w-none"
-                                  dangerouslySetInnerHTML={{ __html: currentQuestion.readingPassage }}
-                                />
-                              </div>
-                            )}
-                            
-                            {currentQuestion.questionType === 'open-ended' ? (
-                              <div className="space-y-2">
-                                <div className="p-4 border-2 rounded-lg">
-                                  <div className="text-sm text-gray-600 mb-1">Student Answer:</div>
-                                  <div className="text-lg font-mono">{studentAnswer || '(empty)'}</div>
-                                </div>
-                                <div className={`p-4 border-2 rounded-lg ${isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
-                                  <div className="text-sm text-gray-600 mb-1">Correct Answer:</div>
-                                  <div className="text-lg font-mono">{String(correctAnswer)}</div>
+                      <div className="flex-1 overflow-y-auto flex flex-col">
+                        <Tabs value={submissionActiveModule} onValueChange={(value: string) => {
+                          setSubmissionActiveModule(value as 'english-m1' | 'english-m2' | 'math-m1' | 'math-m2')
+                          setCurrentQuestionViewIndex(0)
+                        }}>
+                          <TabsList className="grid w-full grid-cols-4 mb-4">
+                            <TabsTrigger value="english-m1">English Module 1</TabsTrigger>
+                            <TabsTrigger value="english-m2">English Module 2</TabsTrigger>
+                            <TabsTrigger value="math-m1">Math Module 1</TabsTrigger>
+                            <TabsTrigger value="math-m2">Math Module 2</TabsTrigger>
+                          </TabsList>
+                          
+                          {(['english-m1', 'english-m2', 'math-m1', 'math-m2'] as const).map((module) => (
+                            <TabsContent key={module} value={module}>
+                              <div className="mb-4 flex items-center justify-between">
+                                <h3 className="text-lg font-semibold">{selectedSubmission.studentName}&apos;s Answers</h3>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setCurrentQuestionViewIndex(Math.max(0, currentQuestionViewIndex - 1))}
+                                    disabled={currentQuestionViewIndex === 0}
+                                  >
+                                    <ChevronLeft className="w-4 h-4" />
+                                  </Button>
+                                  <span className="text-sm font-medium px-2">
+                                    Question {currentQuestionViewIndex + 1} of {questionsByModule[module].length}
+                                  </span>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setCurrentQuestionViewIndex(Math.min(questionsByModule[module].length - 1, currentQuestionViewIndex + 1))}
+                                    disabled={currentQuestionViewIndex === questionsByModule[module].length - 1}
+                                  >
+                                    <ChevronRight className="w-4 h-4" />
+                                  </Button>
                                 </div>
                               </div>
-                            ) : (
-                              <div className="space-y-2">
-                                {currentQuestion.options.map((option: string, index: number) => {
-                                  const isSelected = studentAnswer === index
-                                  const isCorrectOption = correctAnswer === index
-                                  return (
-                                    <div
-                                      key={index}
-                                      className={`p-4 border-2 rounded-lg ${
-                                        isCorrectOption
-                                          ? 'border-green-500 bg-green-50'
-                                          : isSelected
-                                          ? 'border-red-500 bg-red-50'
-                                          : 'border-gray-200'
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-semibold w-6">{String.fromCharCode(65 + index)}</span>
-                                        <span>{option}</span>
-                                        {isCorrectOption && (
-                                          <Badge className="ml-auto bg-green-600">Correct</Badge>
-                                        )}
-                                        {isSelected && !isCorrectOption && (
-                                          <Badge className="ml-auto bg-red-600">Selected</Badge>
-                                        )}
+                              
+                              {questionsByModule[module][currentQuestionViewIndex] && (() => {
+                                const q = questionsByModule[module][currentQuestionViewIndex]
+                                const ans = q.questionType === 'open-ended' 
+                                  ? selectedSubmission.openEndedAnswers?.[q.id]
+                                  : selectedSubmission.answers?.[q.id]
+                                const correct = q.correctAnswer
+                                const correctCheck = q.questionType === 'open-ended'
+                                  ? String(ans || '').trim() === String(correct || '').trim()
+                                  : ans === correct
+                                
+                                return (
+                                  <div className="space-y-4">
+                                    <div className="p-4 rounded-lg" style={{ backgroundColor: '#eaedfc' }}>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <div className="bg-black text-white w-8 h-8 flex items-center justify-center font-bold text-sm">
+                                          {currentQuestionViewIndex + 1}
+                                        </div>
+                                        <Badge className={correctCheck ? 'bg-green-600' : 'bg-red-600'}>
+                                          {correctCheck ? 'Correct' : 'Incorrect'}
+                                        </Badge>
                                       </div>
                                     </div>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )}
+                                    
+                                    <div
+                                      className="prose max-w-none mb-4"
+                                      dangerouslySetInnerHTML={{ __html: q.questionText }}
+                                    />
+                                    
+                                    {q.questionImage && (
+                                      <div className="mb-4">
+                                        <img
+                                          src={q.questionImage}
+                                          alt="Question"
+                                          className="max-w-full max-h-[400px] rounded"
+                                        />
+                                      </div>
+                                    )}
+                                    
+                                    {q.readingPassage && (
+                                      <div className="mb-4 p-4 border rounded bg-gray-50">
+                                        <div
+                                          className="prose max-w-none"
+                                          dangerouslySetInnerHTML={{ __html: q.readingPassage }}
+                                        />
+                                      </div>
+                                    )}
+                                    
+                                    {q.questionType === 'open-ended' ? (
+                                      <div className="space-y-2">
+                                        <div className="p-4 border-2 rounded-lg">
+                                          <div className="text-sm text-gray-600 mb-1">Student Answer:</div>
+                                          <div className="text-lg font-mono">{ans || '(empty)'}</div>
+                                        </div>
+                                        <div className={`p-4 border-2 rounded-lg ${correctCheck ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+                                          <div className="text-sm text-gray-600 mb-1">Correct Answer:</div>
+                                          <div className="text-lg font-mono">{String(correct)}</div>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-2">
+                                        {q.options.map((option: string, index: number) => {
+                                          const isSelected = ans === index
+                                          const isCorrectOption = correct === index
+                                          return (
+                                            <div
+                                              key={index}
+                                              className={`p-4 border-2 rounded-lg ${
+                                                isCorrectOption
+                                                  ? 'border-green-500 bg-green-50'
+                                                  : isSelected
+                                                  ? 'border-red-500 bg-red-50'
+                                                  : 'border-gray-200'
+                                              }`}
+                                            >
+                                              <div className="flex items-center gap-2">
+                                                <span className="font-semibold w-6">{String.fromCharCode(65 + index)}</span>
+                                                <span>{option}</span>
+                                                {isCorrectOption && (
+                                                  <Badge className="ml-auto bg-green-600">Correct</Badge>
+                                                )}
+                                                {isSelected && !isCorrectOption && (
+                                                  <Badge className="ml-auto bg-red-600">Selected</Badge>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })()}
+                            </TabsContent>
+                          ))}
+                        </Tabs>
                       </div>
                     )
                   })()}
