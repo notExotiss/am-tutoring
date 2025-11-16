@@ -21,7 +21,7 @@ interface Question {
   readingPassage?: string // For English questions
   options: string[]
   correctAnswer: number
-  module: number
+  module?: number // Optional - assignments don't use modules
   section: 'english' | 'math'
   questionType?: 'multiple-choice' | 'open-ended'
 }
@@ -76,8 +76,7 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
   })
 
   const addImage = () => {
-    if (imageUrl && questionEditor) {
-      questionEditor.chain().focus().setImage({ src: imageUrl }).run()
+    if (imageUrl) {
       onUpdate({
         ...question,
         questionImage: imageUrl,
@@ -123,7 +122,8 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">
-            Question {question.id} - {question.section === 'english' ? 'English' : 'Math'} Module {question.module}
+            Question {question.id} - {question.section === 'english' ? 'English' : 'Math'}
+            {question.module ? ` Module ${question.module}` : ''}
           </CardTitle>
           <Button variant="ghost" size="icon" onClick={onDelete} className="text-red-600">
             <X className="w-4 h-4" />
@@ -131,21 +131,42 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Question Type Selector */}
-        <div>
-          <Label>Question Type</Label>
-          <Select
-            value={question.questionType || 'multiple-choice'}
-            onValueChange={(value: 'multiple-choice' | 'open-ended') => setQuestionType(value)}
-          >
-            <SelectTrigger className="mt-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-              <SelectItem value="open-ended">Open-Ended (Student-Produced Response)</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Question Type and Section Selectors */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label>Question Type</Label>
+            <Select
+              value={question.questionType || 'multiple-choice'}
+              onValueChange={(value: 'multiple-choice' | 'open-ended') => setQuestionType(value)}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
+                <SelectItem value="open-ended">Open-Ended (Student-Produced Response)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {!question.module && (
+            <div>
+              <Label>Section</Label>
+              <Select
+                value={question.section}
+                onValueChange={(value: 'english' | 'math') => {
+                  onUpdate({ ...question, section: value })
+                }}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="english">English</SelectItem>
+                  <SelectItem value="math">Math</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         {/* Reading Passage Editor (English only) */}
@@ -249,11 +270,22 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
           </p>
         </div>
 
-        {/* Question Image Display */}
+          {/* Question Image Display */}
         {question.questionImage && (
           <div>
-            <Label>Question Image</Label>
-            <img src={question.questionImage} alt="Question" className="mt-2 max-w-full h-auto rounded" />
+            <div className="flex items-center justify-between mb-2">
+              <Label>Question Image</Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onUpdate({ ...question, questionImage: undefined })}
+                className="text-red-600"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Remove Image
+              </Button>
+            </div>
+            <img src={question.questionImage} alt="Question" className="mt-2 max-w-full h-auto rounded border" />
           </div>
         )}
 

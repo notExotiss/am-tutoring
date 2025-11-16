@@ -345,8 +345,8 @@ export default function TakeTestPage() {
                 <li>English Module 1: 27 questions {test.timeLimitEnabled && `(${test.englishModule1Time} minutes)`}</li>
                 <li>English Module 2: 27 questions {test.timeLimitEnabled && `(${test.englishModule2Time} minutes)`}</li>
                 <li>Break: {test.breakTime || 10} minutes</li>
-                <li>Math Module 1: 32 questions {test.timeLimitEnabled && `(${test.mathModule1Time} minutes)`}</li>
-                <li>Math Module 2: 32 questions {test.timeLimitEnabled && `(${test.mathModule2Time} minutes)`}</li>
+                  <li>Math Module 1: 22 questions {test.timeLimitEnabled && `(${test.mathModule1Time} minutes)`}</li>
+                  <li>Math Module 2: 22 questions {test.timeLimitEnabled && `(${test.mathModule2Time} minutes)`}</li>
               </ul>
             </div>
             <div className="flex gap-4">

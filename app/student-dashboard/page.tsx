@@ -165,9 +165,10 @@ export default function StudentDashboard() {
 
     try {
       const assignmentsRef = collection(db, 'assignments')
+      // Query for assignments where studentId is in the studentIds array
       const q = query(
         assignmentsRef, 
-        where('studentId', '==', studentId),
+        where('studentIds', 'array-contains', studentId),
         orderBy('assignedDate', 'desc')
       )
       const querySnapshot = await getDocs(q)
@@ -179,7 +180,38 @@ export default function StudentDashboard() {
       const foldersRef = collection(db, 'folders')
       const foldersSnapshot = await getDocs(foldersRef)
       foldersSnapshot.forEach((doc) => {
-        folderMap.set(doc.id, doc.data().name || 'Unnamed Folder')
+        const folderData = doc.data()
+        folderMap.set(doc.id, folderData.name || 'Unnamed Folder')
+        // Also check if folder is assigned to this student
+        if (folderData.studentIds && folderData.studentIds.includes(studentId)) {
+          // Load all assignments in this folder
+          const folderAssignmentsRef = collection(db, 'assignments')
+          const folderQ = query(
+            folderAssignmentsRef,
+            where('folderId', '==', doc.id)
+          )
+          getDocs(folderQ).then((folderAssignmentsSnapshot) => {
+            folderAssignmentsSnapshot.forEach((assignmentDoc) => {
+              const assignmentData = assignmentDoc.data()
+              // Only add if not already in list
+              if (!assignmentsList.find(a => a.id === assignmentDoc.id)) {
+                assignmentsList.push({
+                  id: assignmentDoc.id,
+                  title: assignmentData.title || '',
+                  description: assignmentData.description || '',
+                  folderId: assignmentData.folderId || '',
+                  folderName: folderData.name || 'Unnamed Folder',
+                  dueDate: assignmentData.dueDate ? assignmentData.dueDate.toDate() : null,
+                  assignedDate: assignmentData.assignedDate ? assignmentData.assignedDate.toDate() : null,
+                  completed: assignmentData.completed || false,
+                  completedDate: assignmentData.completedDate ? assignmentData.completedDate.toDate() : null,
+                  studentId: studentId,
+                })
+              }
+            })
+            setAssignments([...assignmentsList])
+          })
+        }
       })
 
       querySnapshot.forEach((doc) => {
@@ -194,13 +226,43 @@ export default function StudentDashboard() {
           assignedDate: data.assignedDate ? data.assignedDate.toDate() : null,
           completed: data.completed || false,
           completedDate: data.completedDate ? data.completedDate.toDate() : null,
-          studentId: data.studentId || '',
+          studentId: studentId,
         })
       })
 
       setAssignments(assignmentsList)
     } catch (error) {
       console.error('Error loading assignments:', error)
+      // Fallback: try old format
+      try {
+        const assignmentsRef = collection(db, 'assignments')
+        const q = query(
+          assignmentsRef, 
+          where('studentId', '==', studentId),
+          orderBy('assignedDate', 'desc')
+        )
+        const querySnapshot = await getDocs(q)
+        
+        const assignmentsList: Assignment[] = []
+        querySnapshot.forEach((doc) => {
+          const data = doc.data()
+          assignmentsList.push({
+            id: doc.id,
+            title: data.title || '',
+            description: data.description || '',
+            folderId: data.folderId || '',
+            folderName: undefined,
+            dueDate: data.dueDate ? data.dueDate.toDate() : null,
+            assignedDate: data.assignedDate ? data.assignedDate.toDate() : null,
+            completed: data.completed || false,
+            completedDate: data.completedDate ? data.completedDate.toDate() : null,
+            studentId: data.studentId || '',
+          })
+        })
+        setAssignments(assignmentsList)
+      } catch (fallbackError) {
+        console.error('Error loading assignments (fallback):', fallbackError)
+      }
     }
   }
 
@@ -209,9 +271,10 @@ export default function StudentDashboard() {
 
     try {
       const testsRef = collection(db, 'tests')
+      // Query for tests where studentId is in the studentIds array
       const q = query(
         testsRef,
-        where('studentId', '==', studentId),
+        where('studentIds', 'array-contains', studentId),
         orderBy('assignedDate', 'desc')
       )
       const querySnapshot = await getDocs(q)
@@ -228,13 +291,42 @@ export default function StudentDashboard() {
           completed: data.completed || false,
           completedDate: data.completedDate ? data.completedDate.toDate() : null,
           score: data.score || '',
-          studentId: data.studentId || '',
+          studentId: studentId, // Keep for compatibility
         })
       })
 
       setTests(testsList)
     } catch (error) {
       console.error('Error loading tests:', error)
+      // Fallback: try old format with single studentId
+      try {
+        const testsRef = collection(db, 'tests')
+        const q = query(
+          testsRef,
+          where('studentId', '==', studentId),
+          orderBy('assignedDate', 'desc')
+        )
+        const querySnapshot = await getDocs(q)
+        
+        const testsList: Test[] = []
+        querySnapshot.forEach((doc) => {
+          const data = doc.data()
+          testsList.push({
+            id: doc.id,
+            title: data.title || '',
+            description: data.description || '',
+            assignedDate: data.assignedDate ? data.assignedDate.toDate() : null,
+            dueDate: data.dueDate ? data.dueDate.toDate() : null,
+            completed: data.completed || false,
+            completedDate: data.completedDate ? data.completedDate.toDate() : null,
+            score: data.score || '',
+            studentId: data.studentId || '',
+          })
+        })
+        setTests(testsList)
+      } catch (fallbackError) {
+        console.error('Error loading tests (fallback):', fallbackError)
+      }
     }
   }
 

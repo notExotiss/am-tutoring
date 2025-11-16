@@ -26,7 +26,6 @@ import { cn } from '@/lib/utils'
 import StudentManagement from './components/StudentManagement'
 import AssignmentManagement from './components/AssignmentManagement'
 import TestManagement from './components/TestManagement'
-import FolderManagement from './components/FolderManagement'
 
 const ADMIN_EMAIL = 'iamaaritmalhotra@gmail.com'
 
@@ -104,7 +103,7 @@ export default function AdminPanel() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="students" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="students">
               <Users className="w-4 h-4 mr-2" />
               Students
@@ -116,10 +115,6 @@ export default function AdminPanel() {
             <TabsTrigger value="tests">
               <FileText className="w-4 h-4 mr-2" />
               Tests
-            </TabsTrigger>
-            <TabsTrigger value="folders">
-              <Folder className="w-4 h-4 mr-2" />
-              Folders
             </TabsTrigger>
           </TabsList>
 
@@ -133,10 +128,6 @@ export default function AdminPanel() {
 
           <TabsContent value="tests">
             <TestManagement />
-          </TabsContent>
-
-          <TabsContent value="folders">
-            <FolderManagement />
           </TabsContent>
         </Tabs>
       </div>

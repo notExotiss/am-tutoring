@@ -12,7 +12,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { Plus, Trash2, CalendarIcon, FileText, X, Edit, Save } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Plus, Trash2, CalendarIcon, FileText, X, Edit, Save, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -22,7 +23,7 @@ interface Question {
   id: string
   questionText: string
   questionImage?: string
-  readingPassage?: string // For English questions
+  readingPassage?: string
   options: string[]
   correctAnswer: number
   module: number
@@ -34,17 +35,17 @@ interface Test {
   id?: string
   title: string
   description: string
-  studentId: string
-  studentName?: string
+  studentIds: string[] // Changed to array for multiple students
+  studentNames?: string[]
   dueDate: Date | null
   assignedDate: Date | null
   questions: Question[]
   timeLimitEnabled: boolean
-  englishModule1Time?: number // in minutes
+  englishModule1Time?: number
   englishModule2Time?: number
   mathModule1Time?: number
   mathModule2Time?: number
-  breakTime?: number // in minutes, default 10
+  breakTime?: number
 }
 
 interface Student {
@@ -55,14 +56,14 @@ interface Student {
 
 const DIGITAL_SAT_STRUCTURE = {
   english: {
-    module1: { count: 27, defaultTime: 32 }, // 32 minutes for 27 questions
+    module1: { count: 27, defaultTime: 32 },
     module2: { count: 27, defaultTime: 32 },
   },
   math: {
-    module1: { count: 32, defaultTime: 35 }, // 35 minutes for 32 questions
-    module2: { count: 32, defaultTime: 35 },
+    module1: { count: 22, defaultTime: 35 },
+    module2: { count: 22, defaultTime: 35 },
   },
-  breakTime: 10, // 10 minutes between English and Math
+  breakTime: 10,
 }
 
 export default function TestManagement() {
@@ -71,6 +72,13 @@ export default function TestManagement() {
   const [selectedTest, setSelectedTest] = useState<Test | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingTest, setEditingTest] = useState<Test | null>(null)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [activeModules, setActiveModules] = useState({
+    englishM1: true,
+    englishM2: true,
+    mathM1: true,
+    mathM2: true,
+  })
   const { toast } = useToast()
 
   useEffect(() => {
@@ -81,7 +89,6 @@ export default function TestManagement() {
     if (!db) return
     
     try {
-      // Load students
       const studentsRef = collection(db, 'students')
       const studentsSnapshot = await getDocs(query(studentsRef, orderBy('name')))
       const studentsList: Student[] = []
@@ -95,7 +102,6 @@ export default function TestManagement() {
       })
       setStudents(studentsList)
 
-      // Load tests
       const testsRef = collection(db, 'tests')
       const q = query(testsRef, orderBy('assignedDate', 'desc'))
       const querySnapshot = await getDocs(q)
@@ -103,14 +109,18 @@ export default function TestManagement() {
       const testsList: Test[] = []
       querySnapshot.forEach((doc) => {
         const data = doc.data()
-        const student = studentsList.find(s => s.id === data.studentId)
+        const studentIds = data.studentIds || (data.studentId ? [data.studentId] : [])
+        const studentNames = studentIds.map((sid: string) => {
+          const student = studentsList.find(s => s.id === sid)
+          return student?.name || 'Unknown'
+        })
         
         testsList.push({
           id: doc.id,
           title: data.title || '',
           description: data.description || '',
-          studentId: data.studentId || '',
-          studentName: student?.name,
+          studentIds: studentIds,
+          studentNames: studentNames,
           dueDate: data.dueDate ? data.dueDate.toDate() : null,
           assignedDate: data.assignedDate ? data.assignedDate.toDate() : null,
           questions: data.questions || [],
@@ -138,7 +148,7 @@ export default function TestManagement() {
     const newTest: Test = {
       title: '',
       description: '',
-      studentId: '',
+      studentIds: [],
       dueDate: null,
       assignedDate: new Date(),
       questions: [],
@@ -152,86 +162,91 @@ export default function TestManagement() {
     setSelectedTest(newTest)
     setEditingTest(newTest)
     setShowForm(true)
+    setCurrentQuestionIndex(0)
   }
 
   const handleEditTest = (test: Test) => {
     setSelectedTest(test)
     setEditingTest({ ...test })
     setShowForm(true)
+    setCurrentQuestionIndex(0)
   }
 
   const initializeQuestions = (test: Test): Test => {
     const questions: Question[] = []
     
-    // English Module 1: 27 questions
-    for (let i = 1; i <= DIGITAL_SAT_STRUCTURE.english.module1.count; i++) {
-      questions.push({
-        id: `eng-m1-q${i}`,
-        questionText: '',
-        readingPassage: '',
-        options: ['', '', '', ''],
-        correctAnswer: 0,
-        module: 1,
-        section: 'english',
-        questionType: 'multiple-choice',
-      })
+    if (activeModules.englishM1) {
+      for (let i = 1; i <= DIGITAL_SAT_STRUCTURE.english.module1.count; i++) {
+        questions.push({
+          id: `eng-m1-q${i}`,
+          questionText: '',
+          readingPassage: '',
+          options: ['', '', '', ''],
+          correctAnswer: 0,
+          module: 1,
+          section: 'english',
+          questionType: 'multiple-choice',
+        })
+      }
     }
     
-    // English Module 2: 27 questions
-    for (let i = 1; i <= DIGITAL_SAT_STRUCTURE.english.module2.count; i++) {
-      questions.push({
-        id: `eng-m2-q${i}`,
-        questionText: '',
-        readingPassage: '',
-        options: ['', '', '', ''],
-        correctAnswer: 0,
-        module: 2,
-        section: 'english',
-        questionType: 'multiple-choice',
-      })
+    if (activeModules.englishM2) {
+      for (let i = 1; i <= DIGITAL_SAT_STRUCTURE.english.module2.count; i++) {
+        questions.push({
+          id: `eng-m2-q${i}`,
+          questionText: '',
+          readingPassage: '',
+          options: ['', '', '', ''],
+          correctAnswer: 0,
+          module: 2,
+          section: 'english',
+          questionType: 'multiple-choice',
+        })
+      }
     }
     
-    // Math Module 1: 22 questions
-    for (let i = 1; i <= DIGITAL_SAT_STRUCTURE.math.module1.count; i++) {
-      questions.push({
-        id: `math-m1-q${i}`,
-        questionText: '',
-        options: ['', '', '', ''],
-        correctAnswer: 0,
-        module: 1,
-        section: 'math',
-        questionType: 'multiple-choice',
-      })
+    if (activeModules.mathM1) {
+      for (let i = 1; i <= DIGITAL_SAT_STRUCTURE.math.module1.count; i++) {
+        questions.push({
+          id: `math-m1-q${i}`,
+          questionText: '',
+          options: ['', '', '', ''],
+          correctAnswer: 0,
+          module: 1,
+          section: 'math',
+          questionType: 'multiple-choice',
+        })
+      }
     }
     
-    // Math Module 2: 22 questions
-    for (let i = 1; i <= DIGITAL_SAT_STRUCTURE.math.module2.count; i++) {
-      questions.push({
-        id: `math-m2-q${i}`,
-        questionText: '',
-        options: ['', '', '', ''],
-        correctAnswer: 0,
-        module: 2,
-        section: 'math',
-        questionType: 'multiple-choice',
-      })
+    if (activeModules.mathM2) {
+      for (let i = 1; i <= DIGITAL_SAT_STRUCTURE.math.module2.count; i++) {
+        questions.push({
+          id: `math-m2-q${i}`,
+          questionText: '',
+          options: ['', '', '', ''],
+          correctAnswer: 0,
+          module: 2,
+          section: 'math',
+          questionType: 'multiple-choice',
+        })
+      }
     }
     
     return { ...test, questions }
   }
 
   const handleSaveTest = async () => {
-    if (!db || !editingTest || !editingTest.studentId) {
+    if (!db || !editingTest || !editingTest.title) {
       toast({
         title: 'Error',
-        description: 'Please fill in all required fields.',
+        description: 'Please fill in the test title.',
         variant: 'destructive',
       })
       return
     }
 
     try {
-      // Initialize questions if empty
       let testToSave = editingTest
       if (testToSave.questions.length === 0) {
         testToSave = initializeQuestions(testToSave)
@@ -240,7 +255,7 @@ export default function TestManagement() {
       const testData = {
         title: testToSave.title,
         description: testToSave.description,
-        studentId: testToSave.studentId,
+        studentIds: testToSave.studentIds || [],
         dueDate: testToSave.dueDate || null,
         assignedDate: testToSave.assignedDate || new Date(),
         questions: testToSave.questions,
@@ -254,7 +269,6 @@ export default function TestManagement() {
       }
 
       if (editingTest.id) {
-        // Update existing test
         const docRef = doc(db, 'tests', editingTest.id)
         await setDoc(docRef, testData as any)
         toast({
@@ -262,7 +276,6 @@ export default function TestManagement() {
           description: 'Test updated successfully!',
         })
       } else {
-        // Create new test
         const testsRef = collection(db, 'tests')
         const newDocRef = doc(testsRef)
         await setDoc(newDocRef, testData as any)
@@ -276,6 +289,7 @@ export default function TestManagement() {
       setShowForm(false)
       setSelectedTest(null)
       setEditingTest(null)
+      setCurrentQuestionIndex(0)
     } catch (error) {
       console.error('Error saving test:', error)
       toast({
@@ -320,15 +334,54 @@ export default function TestManagement() {
     if (!editingTest) return
     const updatedQuestions = editingTest.questions.filter(q => q.id !== questionId)
     setEditingTest({ ...editingTest, questions: updatedQuestions })
+    if (currentQuestionIndex >= updatedQuestions.length) {
+      setCurrentQuestionIndex(Math.max(0, updatedQuestions.length - 1))
+    }
+  }
+
+  const addQuestion = () => {
+    if (!editingTest) return
+    const newQuestion: Question = {
+      id: `q-${Date.now()}`,
+      questionText: '',
+      options: ['', '', '', ''],
+      correctAnswer: 0,
+      module: 1,
+      section: 'english',
+      questionType: 'multiple-choice',
+    }
+    setEditingTest({
+      ...editingTest,
+      questions: [...editingTest.questions, newQuestion],
+    })
+    setCurrentQuestionIndex(editingTest.questions.length)
+  }
+
+  const toggleStudent = (studentId: string) => {
+    if (!editingTest) return
+    const currentIds = editingTest.studentIds || []
+    if (currentIds.includes(studentId)) {
+      setEditingTest({
+        ...editingTest,
+        studentIds: currentIds.filter(id => id !== studentId),
+      })
+    } else {
+      setEditingTest({
+        ...editingTest,
+        studentIds: [...currentIds, studentId],
+      })
+    }
   }
 
   // Group tests by student
   const testsByStudent = new Map<string, Test[]>()
   tests.forEach(test => {
-    if (!testsByStudent.has(test.studentId)) {
-      testsByStudent.set(test.studentId, [])
-    }
-    testsByStudent.get(test.studentId)!.push(test)
+    test.studentIds.forEach(studentId => {
+      if (!testsByStudent.has(studentId)) {
+        testsByStudent.set(studentId, [])
+      }
+      testsByStudent.get(studentId)!.push(test)
+    })
   })
 
   if (showForm && editingTest) {
@@ -338,10 +391,8 @@ export default function TestManagement() {
       setEditingTest(initialized)
     }
 
-    const englishM1Questions = editingTest.questions.filter(q => q.section === 'english' && q.module === 1)
-    const englishM2Questions = editingTest.questions.filter(q => q.section === 'english' && q.module === 2)
-    const mathM1Questions = editingTest.questions.filter(q => q.section === 'math' && q.module === 1)
-    const mathM2Questions = editingTest.questions.filter(q => q.section === 'math' && q.module === 2)
+    const currentQuestion = editingTest.questions[currentQuestionIndex]
+    const totalQuestions = editingTest.questions.length
 
     return (
       <div>
@@ -351,36 +402,19 @@ export default function TestManagement() {
             setShowForm(false)
             setSelectedTest(null)
             setEditingTest(null)
+            setCurrentQuestionIndex(0)
           }}>
             <X className="w-4 h-4 mr-2" />
             Cancel
           </Button>
         </div>
 
+        {/* Test Information Card */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Test Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label>Student</Label>
-              <Select
-                value={editingTest.studentId}
-                onValueChange={(value) => setEditingTest({ ...editingTest, studentId: value })}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select a student" />
-                </SelectTrigger>
-                <SelectContent>
-                  {students.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.name} ({student.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             <div>
               <Label>Title</Label>
               <Input
@@ -463,6 +497,55 @@ export default function TestManagement() {
               </div>
             </div>
 
+            {/* Module Toggles */}
+            <div className="border-t pt-4">
+              <Label className="mb-3 block">Modules to Include</Label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="eng-m1"
+                    checked={activeModules.englishM1}
+                    onCheckedChange={(checked) => setActiveModules({ ...activeModules, englishM1: checked as boolean })}
+                  />
+                  <Label htmlFor="eng-m1" className="cursor-pointer">English M1</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="eng-m2"
+                    checked={activeModules.englishM2}
+                    onCheckedChange={(checked) => setActiveModules({ ...activeModules, englishM2: checked as boolean })}
+                  />
+                  <Label htmlFor="eng-m2" className="cursor-pointer">English M2</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="math-m1"
+                    checked={activeModules.mathM1}
+                    onCheckedChange={(checked) => setActiveModules({ ...activeModules, mathM1: checked as boolean })}
+                  />
+                  <Label htmlFor="math-m1" className="cursor-pointer">Math M1</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="math-m2"
+                    checked={activeModules.mathM2}
+                    onCheckedChange={(checked) => setActiveModules({ ...activeModules, mathM2: checked as boolean })}
+                  />
+                  <Label htmlFor="math-m2" className="cursor-pointer">Math M2</Label>
+                </div>
+              </div>
+              <Button
+                onClick={() => {
+                  const initialized = initializeQuestions(editingTest)
+                  setEditingTest(initialized)
+                }}
+                className="mt-4"
+                variant="outline"
+              >
+                Initialize Questions
+              </Button>
+            </div>
+
             {/* Time Limit Settings */}
             <div className="border-t pt-4">
               <div className="flex items-center justify-between mb-4">
@@ -515,6 +598,25 @@ export default function TestManagement() {
               )}
             </div>
 
+            {/* Assign to Students */}
+            <div className="border-t pt-4">
+              <Label className="mb-3 block">Assign to Students</Label>
+              <div className="max-h-40 overflow-y-auto border rounded p-3 space-y-2">
+                {students.map((student) => (
+                  <div key={student.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`student-${student.id}`}
+                      checked={editingTest.studentIds?.includes(student.id) || false}
+                      onCheckedChange={() => toggleStudent(student.id)}
+                    />
+                    <Label htmlFor={`student-${student.id}`} className="cursor-pointer flex-1">
+                      {student.name} ({student.email})
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <Button onClick={handleSaveTest} className="w-full bg-blue-600 hover:bg-blue-700">
               <Save className="w-4 h-4 mr-2" />
               Save Test
@@ -522,72 +624,49 @@ export default function TestManagement() {
           </CardContent>
         </Card>
 
-        {/* Questions Editor */}
-        <div className="space-y-6">
+        {/* Question Carousel */}
+        {totalQuestions > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>English Module 1 (27 questions)</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>
+                  Question {currentQuestionIndex + 1} of {totalQuestions}
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
+                    disabled={currentQuestionIndex === 0}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentQuestionIndex(Math.min(totalQuestions - 1, currentQuestionIndex + 1))}
+                    disabled={currentQuestionIndex === totalQuestions - 1}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" onClick={addQuestion}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Question
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              {englishM1Questions.map((question) => (
+              {currentQuestion && (
                 <TestQuestionEditor
-                  key={question.id}
-                  question={question}
-                  onUpdate={(updated) => updateQuestion(question.id, updated)}
-                  onDelete={() => deleteQuestion(question.id)}
+                  question={currentQuestion}
+                  onUpdate={(updated) => updateQuestion(currentQuestion.id, updated)}
+                  onDelete={() => deleteQuestion(currentQuestion.id)}
                 />
-              ))}
+              )}
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>English Module 2 (27 questions)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {englishM2Questions.map((question) => (
-                <TestQuestionEditor
-                  key={question.id}
-                  question={question}
-                  onUpdate={(updated) => updateQuestion(question.id, updated)}
-                  onDelete={() => deleteQuestion(question.id)}
-                />
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Math Module 1 (32 questions)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {mathM1Questions.map((question) => (
-                <TestQuestionEditor
-                  key={question.id}
-                  question={question}
-                  onUpdate={(updated) => updateQuestion(question.id, updated)}
-                  onDelete={() => deleteQuestion(question.id)}
-                />
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Math Module 2 (32 questions)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {mathM2Questions.map((question) => (
-                <TestQuestionEditor
-                  key={question.id}
-                  question={question}
-                  onUpdate={(updated) => updateQuestion(question.id, updated)}
-                  onDelete={() => deleteQuestion(question.id)}
-                />
-              ))}
-            </CardContent>
-          </Card>
-        </div>
+        )}
       </div>
     )
   }
@@ -638,6 +717,12 @@ export default function TestManagement() {
                               <h3 className="font-semibold text-lg">{test.title}</h3>
                               <Badge>{test.questions.length} questions</Badge>
                               {test.timeLimitEnabled && <Badge variant="secondary">Timed</Badge>}
+                              {test.studentIds && test.studentIds.length > 1 && (
+                                <Badge variant="outline">
+                                  <Users className="w-3 h-3 mr-1" />
+                                  {test.studentIds.length} students
+                                </Badge>
+                              )}
                             </div>
                             <p className="text-gray-600 text-sm mb-2">{test.description}</p>
                             <div className="flex gap-4 text-xs text-gray-500">
