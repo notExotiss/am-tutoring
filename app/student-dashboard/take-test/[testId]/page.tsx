@@ -595,13 +595,26 @@ export default function TakeTestPage() {
           <div className="max-w-4xl mx-auto text-sm text-gray-700">
             {isEnglish ? (
               <div>
-                <p className="mb-2">Each passage or pair of passages below is followed by a number of questions. After reading each passage or pair, choose the best answer to each question based on what is stated or implied in the passage or passages and in any accompanying graphics (such as a table or graph).</p>
-                <p>Questions provide four answer choices. Select the best answer for each question.</p>
+                <p className="font-semibold mb-3">DIRECTIONS</p>
+                <p className="mb-2">The questions in this section address a number of important reading and writing skills.</p>
+                <p className="mb-2">Each question includes one or more passages, which may include a table or graph.</p>
+                <p className="mb-2">Read each passage and question carefully, and then choose the best answer to the question based on the passage(s).</p>
+                <p>All questions in this section are multiple-choice with four answer choices. Each question has a single best answer.</p>
               </div>
             ) : (
               <div>
-                <p className="mb-2">For questions 1-27, solve each problem, choose the best answer from the choices provided, and fill in the corresponding circle on your answer sheet. For questions 28-32, solve the problem and enter your answer in the grid on the answer sheet.</p>
-                <p>You may use a calculator on all questions in this section.</p>
+                <p className="font-semibold mb-3">DIRECTIONS</p>
+                <p className="mb-2">The questions in this section address a number of important math skills.</p>
+                <p className="mb-2">Use of a <strong>calculator is permitted for all questions</strong>. A reference sheet, calculator, and these directions can be accessed throughout the test.</p>
+                <p className="mb-2 font-semibold">Unless otherwise indicated:</p>
+                <ul className="list-disc list-inside mb-2 space-y-1">
+                  <li>All variables and expressions represent <strong>real numbers</strong>.</li>
+                  <li>Figures provided are drawn <strong>to scale</strong>.</li>
+                  <li>All figures lie in a <strong>plane</strong>.</li>
+                  <li>The domain of a given function <em>f</em> is the set of all <strong>real numbers <em>x</em> for which <em>f(x)</em> is a real number</strong>.</li>
+                </ul>
+                <p className="mb-2">For <strong>multiple-choice questions</strong>, solve each problem and choose the correct answer from the choices provided. Each multiple-choice question has a <strong>single correct answer</strong>.</p>
+                <p>For <strong>student-produced response questions</strong>, solve each problem and enter your answer as described in the student-produced response directions.</p>
               </div>
             )}
           </div>
@@ -643,39 +656,48 @@ export default function TakeTestPage() {
         {isMath && isOpenEnded && (
           <div className="w-80 overflow-y-auto p-6 border-r bg-gray-50">
             <h3 className="font-semibold mb-4">Student-produced response directions</h3>
+            <p className="text-sm mb-3">For <strong>student-produced response questions</strong>, solve each problem and enter your answer as described below.</p>
             <ul className="text-sm space-y-2 mb-6">
-              <li>• If you find more than one correct answer, enter only one of them.</li>
-              <li>• Positive answers can be up to 5 characters; negative answers can be up to 6 characters (including the negative sign).</li>
-              <li>• If your answer is a fraction that doesn&apos;t fit in the provided space, enter the decimal equivalent.</li>
-              <li>• If your answer is a decimal, truncate or round at the fourth digit.</li>
-              <li>• If your answer is a mixed number (such as 3 1/2), enter it as an improper fraction (7/2) or its decimal equivalent (3.5).</li>
-              <li>• Do not enter symbols such as a percent sign or comma.</li>
+              <li>• If you find more than one correct answer, <strong>enter only one answer</strong>.</li>
+              <li>• You can enter up to <strong>5 characters for a positive answer</strong> and up to <strong>6 characters</strong> (including the negative sign) <strong>for a negative answer</strong>.</li>
+              <li>• If your answer is a fraction that doesn&apos;t fit in the provided space, enter the <strong>decimal equivalent</strong>.</li>
+              <li>• If your answer is a decimal that doesn&apos;t fit in the provided space, enter it by <strong>truncating or rounding at the fourth digit</strong>.</li>
+              <li>• If your answer is a mixed number (such as 3<sup>1</sup>/<sub>2</sub>), enter it as an <strong>improper fraction</strong> (<sup>7</sup>/<sub>2</sub>) or its <strong>decimal equivalent</strong> (3.5).</li>
+              <li>• <strong>Don&apos;t enter symbols</strong> such as a percent sign, comma, or dollar sign.</li>
             </ul>
             
             <div className="text-sm">
-              <p className="font-semibold mb-2">Examples:</p>
-              <table className="w-full text-xs border-collapse">
+              <p className="font-semibold mb-2">EXAMPLES</p>
+              <table className="w-full text-xs border-collapse border border-gray-300">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">Answer</th>
-                    <th className="text-left p-2">Acceptable</th>
-                    <th className="text-left p-2">Unacceptable</th>
+                  <tr className="border-b border-gray-300 bg-gray-100">
+                    <th className="text-left p-2 border-r border-gray-300">Acceptable ways to enter answer</th>
+                    <th className="text-left p-2">Unacceptable: will NOT receive credit</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b">
-                    <td className="p-2">3.5</td>
-                    <td className="p-2">3.5, 3.50, 7/2</td>
-                    <td className="p-2">3 1/2</td>
+                  <tr className="border-b border-gray-300">
+                    <td className="p-2 border-r border-gray-300 font-semibold">3.5</td>
+                    <td className="p-2"></td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-2">2/3</td>
-                    <td className="p-2">2/3, .6666, .6667, 0.666, 0.667</td>
-                    <td className="p-2">0.66, .66, 0.67, .67</td>
+                  <tr className="border-b border-gray-300">
+                    <td className="p-2 border-r border-gray-300">3.50, <sup>7</sup>/<sub>2</sub></td>
+                    <td className="p-2">3<sup>1</sup>/<sub>2</sub>, 3 1/2</td>
+                  </tr>
+                  <tr className="border-b border-gray-300">
+                    <td className="p-2 border-r border-gray-300 font-semibold"><sup>2</sup>/<sub>3</sub></td>
+                    <td className="p-2"></td>
+                  </tr>
+                  <tr className="border-b border-gray-300">
+                    <td className="p-2 border-r border-gray-300">0.66, .6666, .6667, 0.666, 0.667</td>
+                    <td className="p-2">.66, 0.67, .67</td>
                   </tr>
                   <tr>
-                    <td className="p-2">-1/3</td>
-                    <td className="p-2">-1/3, -.3333, -0.333</td>
+                    <td className="p-2 border-r border-gray-300 font-semibold">-<sup>1</sup>/<sub>3</sub></td>
+                    <td className="p-2"></td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border-r border-gray-300">-1/3, -.3333, -0.333</td>
                     <td className="p-2">-.33, -0.33</td>
                   </tr>
                 </tbody>
@@ -923,6 +945,7 @@ export default function TakeTestPage() {
 
       {/* Reference Sheet Popup */}
       {showReferenceSheet && (
+        // @ts-expect-error - react-draggable Draggable type compatibility
         <Draggable handle=".drag-handle" bounds="parent">
           <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-96 max-h-[80vh] overflow-hidden flex flex-col">
             <div className="bg-gray-100 px-4 py-2 flex items-center justify-between drag-handle cursor-move border-b">
@@ -947,6 +970,7 @@ export default function TakeTestPage() {
 
       {/* Calculator Popup (Desmos) */}
       {showCalculator && (
+        // @ts-expect-error - react-draggable Draggable type compatibility
         <Draggable handle=".drag-handle" bounds="parent">
           <div className="fixed top-20 right-20 bg-white border-2 border-gray-300 rounded-lg shadow-2xl z-50 w-[600px] h-[500px] flex flex-col">
             <div className="bg-gray-100 px-4 py-2 flex items-center justify-between drag-handle cursor-move border-b">

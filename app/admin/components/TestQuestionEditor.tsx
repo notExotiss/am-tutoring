@@ -185,6 +185,7 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
             {showReadingPassageEditor && passageEditor && (
               <div>
                 <div className="border rounded p-2 min-h-[200px] mb-2">
+                  {/* @ts-expect-error - Tiptap EditorContent type compatibility */}
                   <EditorContent editor={passageEditor} />
                 </div>
                 <div className="flex gap-2 p-2 border rounded mb-2">
@@ -263,6 +264,7 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
 
           {/* Question Text Editor */}
           <div className="border rounded p-2 min-h-[100px]">
+            {/* @ts-expect-error - Tiptap EditorContent type compatibility */}
             <EditorContent editor={questionEditor} />
           </div>
           <p className="text-xs text-gray-500 mt-1">

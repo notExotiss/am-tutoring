@@ -5,15 +5,14 @@ import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 import { cn } from "@/lib/utils"
 
-const Popover = PopoverPrimitive.Root
+const Popover = PopoverPrimitive.Root as any
 
-const PopoverTrigger = PopoverPrimitive.Trigger
+const PopoverTrigger = PopoverPrimitive.Trigger as any
 
-const PopoverContent = React.forwardRef<
-  React.ElementRef<typeof PopoverPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
+const PopoverContent = React.forwardRef<any, any>(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
+  // @ts-ignore - Radix UI PopoverPortal type compatibility
   <PopoverPrimitive.Portal>
+    {/* @ts-ignore - Radix UI PopoverContent type compatibility */}
     <PopoverPrimitive.Content
       ref={ref}
       align={align}

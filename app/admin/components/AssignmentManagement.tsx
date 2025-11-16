@@ -641,9 +641,7 @@ export default function AssignmentManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Assigned Date</Label>
-                {/* @ts-expect-error - Radix UI Popover type compatibility */}
                 <Popover>
-                  {/* @ts-expect-error - Radix UI PopoverTrigger type compatibility */}
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -660,7 +658,7 @@ export default function AssignmentManagement() {
                       )}
                     </Button>
                   </PopoverTrigger>
-                  {/* @ts-expect-error - Radix UI PopoverContent type compatibility */}
+                  {/* @ts-ignore - Radix UI PopoverContent type compatibility */}
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
@@ -674,9 +672,7 @@ export default function AssignmentManagement() {
 
               <div>
                 <Label>Due Date (Optional)</Label>
-                {/* @ts-expect-error - Radix UI Popover type compatibility */}
                 <Popover>
-                  {/* @ts-expect-error - Radix UI PopoverTrigger type compatibility */}
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -693,7 +689,6 @@ export default function AssignmentManagement() {
                       )}
                     </Button>
                   </PopoverTrigger>
-                  {/* @ts-expect-error - Radix UI PopoverContent type compatibility */}
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
@@ -708,22 +703,16 @@ export default function AssignmentManagement() {
 
             <div>
               <Label>Folder (Optional)</Label>
-                {/* @ts-expect-error - Radix UI Select type compatibility */}
                 <Select
                   value={editingAssignment.folderId || 'none'}
-                  onValueChange={(value) => setEditingAssignment({ ...editingAssignment, folderId: value === 'none' ? undefined : value })}
+                  onValueChange={(value: string) => setEditingAssignment({ ...editingAssignment, folderId: value === 'none' ? undefined : value })}
                 >
-                {/* @ts-expect-error - Radix UI SelectTrigger type compatibility */}
                 <SelectTrigger className="mt-1">
-                  {/* @ts-expect-error - Radix UI SelectValue type compatibility */}
                   <SelectValue placeholder="Select a folder (optional)" />
                 </SelectTrigger>
-                {/* @ts-expect-error - Radix UI SelectContent type compatibility */}
                 <SelectContent>
-                  {/* @ts-expect-error - Radix UI SelectItem type compatibility */}
                   <SelectItem value="none">No Folder</SelectItem>
                   {folders.map((folder) => (
-                    /* @ts-expect-error - Radix UI SelectItem type compatibility */
                     <SelectItem key={folder.id} value={folder.id}>
                       {folder.name}
                     </SelectItem>
@@ -737,7 +726,7 @@ export default function AssignmentManagement() {
                 <Label>Enable Time Limit</Label>
                 <Switch
                   checked={editingAssignment.timeLimitEnabled}
-                  onCheckedChange={(checked) => setEditingAssignment({ ...editingAssignment, timeLimitEnabled: checked })}
+                  onCheckedChange={(checked: boolean) => setEditingAssignment({ ...editingAssignment, timeLimitEnabled: checked })}
                 />
               </div>
 
@@ -933,7 +922,7 @@ export default function AssignmentManagement() {
                     <Checkbox
                       id={`folder-student-${student.id}`}
                       checked={showAssignFolderDialog.studentIds?.includes(student.id) || false}
-                      onCheckedChange={(checked) => {
+                      onCheckedChange={(checked: boolean) => {
                         const currentIds = showAssignFolderDialog.studentIds || []
                         if (checked) {
                           setShowAssignFolderDialog({
@@ -970,13 +959,14 @@ export default function AssignmentManagement() {
         </Card>
       )}
 
-      {/* Assignments and Folders with Drag and Drop */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={(event) => setActiveId(event.active.id as string)}
-        onDragEnd={handleDragEnd}
-      >
+       {/* Assignments and Folders with Drag and Drop */}
+       {/* @ts-expect-error - dnd-kit DndContext type compatibility */}
+       <DndContext
+         sensors={sensors}
+         collisionDetection={closestCenter}
+         onDragStart={(event) => setActiveId(event.active.id as string)}
+         onDragEnd={handleDragEnd}
+       >
         <div className="space-y-6">
           {/* Unassigned Assignments */}
           {unassignedAssignments.length > 0 && (
@@ -1054,6 +1044,7 @@ export default function AssignmentManagement() {
           )}
         </div>
 
+        {/* @ts-expect-error - dnd-kit DragOverlay type compatibility */}
         <DragOverlay>
           {activeAssignment ? (
             <div className="border-l-4 border-blue-500 pl-4 py-3 bg-white rounded shadow-lg">

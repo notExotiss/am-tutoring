@@ -29,7 +29,7 @@ export default function Services() {
       <div className="mx-auto max-w-6xl relative z-10">
         <div className="mb-16 text-center">
           <h2 className="text-4xl md:text-5xl font-black text-black mb-4 relative inline-block">
-            Services
+              Services
             <svg className="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 200 12" preserveAspectRatio="none">
               <path d="M0,8 Q50,4 100,8 T200,8" stroke="#dc2626" strokeWidth="4" fill="none" strokeLinecap="round" />
             </svg>
@@ -53,7 +53,7 @@ export default function Services() {
               <div className={`absolute top-0 right-0 w-40 h-40 organic-shape opacity-15 ${
                 index === 0 ? 'bg-blue-500' : 'bg-red-500'
               } -translate-y-1/2 translate-x-1/2 animate-blob`} style={{ animationDelay: `${index * 2}s` }}></div>
-              
+
               {/* Icon and Price */}
               <div className="flex items-start justify-between mb-6 relative z-10">
                 <div className={`text-3xl font-black ${index === 0 ? 'text-blue-600' : 'text-red-600'}`}>

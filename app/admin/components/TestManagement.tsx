@@ -513,7 +513,7 @@ export default function TestManagement() {
                   <Checkbox
                     id="eng-m1"
                     checked={activeModules.englishM1}
-                    onCheckedChange={(checked) => setActiveModules({ ...activeModules, englishM1: checked as boolean })}
+                    onCheckedChange={(checked: boolean) => setActiveModules({ ...activeModules, englishM1: checked })}
                   />
                   <Label htmlFor="eng-m1" className="cursor-pointer">English M1</Label>
                 </div>
@@ -521,7 +521,7 @@ export default function TestManagement() {
                   <Checkbox
                     id="eng-m2"
                     checked={activeModules.englishM2}
-                    onCheckedChange={(checked) => setActiveModules({ ...activeModules, englishM2: checked as boolean })}
+                    onCheckedChange={(checked: boolean) => setActiveModules({ ...activeModules, englishM2: checked })}
                   />
                   <Label htmlFor="eng-m2" className="cursor-pointer">English M2</Label>
                 </div>
@@ -529,7 +529,7 @@ export default function TestManagement() {
                   <Checkbox
                     id="math-m1"
                     checked={activeModules.mathM1}
-                    onCheckedChange={(checked) => setActiveModules({ ...activeModules, mathM1: checked as boolean })}
+                    onCheckedChange={(checked: boolean) => setActiveModules({ ...activeModules, mathM1: checked })}
                   />
                   <Label htmlFor="math-m1" className="cursor-pointer">Math M1</Label>
                 </div>
@@ -537,7 +537,7 @@ export default function TestManagement() {
                   <Checkbox
                     id="math-m2"
                     checked={activeModules.mathM2}
-                    onCheckedChange={(checked) => setActiveModules({ ...activeModules, mathM2: checked as boolean })}
+                    onCheckedChange={(checked: boolean) => setActiveModules({ ...activeModules, mathM2: checked })}
                   />
                   <Label htmlFor="math-m2" className="cursor-pointer">Math M2</Label>
                 </div>
@@ -560,7 +560,7 @@ export default function TestManagement() {
                 <Label>Enable Time Limits</Label>
                 <Switch
                   checked={editingTest.timeLimitEnabled}
-                  onCheckedChange={(checked) => setEditingTest({ ...editingTest, timeLimitEnabled: checked })}
+                  onCheckedChange={(checked: boolean) => setEditingTest({ ...editingTest, timeLimitEnabled: checked })}
                 />
               </div>
 
