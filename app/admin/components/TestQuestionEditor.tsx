@@ -80,30 +80,28 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
     },
   })
 
+
   // Update editors when question changes
   useEffect(() => {
     if (questionEditor && !questionEditor.isDestroyed) {
       isUpdatingFromProps.current = true
-      questionEditor.commands.setContent(question.questionText || '')
-      // Use requestAnimationFrame to ensure update completes before resetting flag
+      questionEditor.commands.setContent(question.questionText || '<p></p>')
       requestAnimationFrame(() => {
         isUpdatingFromProps.current = false
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question.id])
+  }, [question.id, question.questionText, questionEditor])
 
   useEffect(() => {
     if (passageEditor && !passageEditor.isDestroyed) {
       isUpdatingFromProps.current = true
-      passageEditor.commands.setContent(question.readingPassage || '')
-      // Use requestAnimationFrame to ensure update completes before resetting flag
+      passageEditor.commands.setContent(question.readingPassage || '<p></p>')
       requestAnimationFrame(() => {
         isUpdatingFromProps.current = false
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question.id])
+  }, [question.id, question.readingPassage, passageEditor])
+
 
   useEffect(() => {
     setImageUrl(question.questionImage || '')
