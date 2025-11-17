@@ -216,21 +216,32 @@ export default function TestManagement() {
   }, [activeModule, showForm, editingTest, currentQuestionIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleViewSubmissions = async (test: Test) => {
-    if (!db || !test.id) return
+    if (!db || !test.id) {
+      console.error('Missing db or test.id:', { db: !!db, testId: test.id })
+      return
+    }
     
     try {
       setViewingSubmissions(test)
       const submissionsRef = collection(db, 'testProgress')
       const querySnapshot = await getDocs(submissionsRef)
       
+      console.log('Querying submissions for test:', test.id)
+      console.log('Total testProgress documents:', querySnapshot.size)
+      
       const submissionsList: any[] = []
       querySnapshot.forEach((doc) => {
         const data = doc.data()
+        console.log('Checking document:', doc.id, { testId: data.testId, testState: data.testState, matchesTest: data.testId === test.id })
         // Check if this submission is for this test
-        if (data.testId === test.id && data.testState === 'completed') {
+        // First try to match by testId, if that doesn't work, try matching by document ID pattern
+        const matchesByTestId = data.testId === test.id
+        const matchesByDocId = doc.id.startsWith(`${test.id}_`)
+        
+        if ((matchesByTestId || matchesByDocId) && data.testState === 'completed') {
           // Get student info
-          const userId = data.userId
-          const student = students.find(s => s.id === userId)
+          const userId = data.userId || (matchesByDocId ? doc.id.split('_')[1] : null)
+          const student = userId ? students.find(s => s.id === userId) : null
           submissionsList.push({
             id: doc.id,
             ...data,
@@ -241,11 +252,18 @@ export default function TestManagement() {
         }
       })
       
+      console.log('Found submissions:', submissionsList.length)
       setSubmissions(submissionsList)
       if (submissionsList.length > 0) {
         setSelectedSubmission(submissionsList[0])
         setCurrentQuestionViewIndex(0)
         setSubmissionActiveModule('english-m1')
+      } else {
+        // Show a more helpful message
+        toast({
+          title: 'No submissions found',
+          description: `No completed submissions found for test "${test.title}". Make sure students have submitted the test.`,
+        })
       }
     } catch (error) {
       console.error('Error loading submissions:', error)
