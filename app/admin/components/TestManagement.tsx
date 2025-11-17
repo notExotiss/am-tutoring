@@ -185,8 +185,16 @@ export default function TestManagement() {
 
   // Auto-select first question in active module when module changes (but not when questions change)
   const prevActiveModule = useRef(activeModule)
+  const isManualSelection = useRef(false)
+  
   useEffect(() => {
     if (!editingTest || !showForm) return
+    
+    // If this was a manual selection, don't auto-select
+    if (isManualSelection.current) {
+      isManualSelection.current = false
+      return
+    }
     
     // Only auto-select if the module actually changed
     if (prevActiveModule.current === activeModule) {
@@ -213,7 +221,7 @@ export default function TestManagement() {
     if (firstQuestionIndex >= 0) {
       setCurrentQuestionIndex(firstQuestionIndex)
     }
-  }, [activeModule, showForm, editingTest, currentQuestionIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeModule, showForm, editingTest]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleViewSubmissions = async (test: Test) => {
     if (!db || !test.id) return
@@ -784,8 +792,15 @@ export default function TestManagement() {
                                     : (question.module === 1 ? 'math-m1' : 'math-m2')
                                   if (activeModule !== questionModule) {
                                     setActiveModule(questionModule)
+                                    // Wait for module to change, then set the question index
+                                    setTimeout(() => {
+                                      isManualSelection.current = true
+                                      setCurrentQuestionIndex(globalIndex)
+                                    }, 0)
+                                  } else {
+                                    isManualSelection.current = true
+                                    setCurrentQuestionIndex(globalIndex)
                                   }
-                                  setCurrentQuestionIndex(globalIndex)
                                 } else {
                                   // Create new question for this position
                                   const moduleSection = module.startsWith('english') ? 'english' : 'math'
@@ -834,7 +849,7 @@ export default function TestManagement() {
                         const moduleSection = module.split('-')[0]
                         const moduleNumber = parseInt(module.split('-')[1])
                         
-                        // Check if currentQuestionIndex is valid and question exists
+                        // First, check if currentQuestionIndex points to a question in this module
                         let questionToShow = null
                         let questionIndex = -1
                         
@@ -847,13 +862,18 @@ export default function TestManagement() {
                           }
                         }
                         
-                        // If no question in this module is selected, show the first question in this module
-                        if (!questionToShow && moduleQuestions.length > 0) {
+                        // Only show first question if no question is selected in this module AND no question is selected at all
+                        // This prevents showing the first question when a question in another module is selected
+                        if (!questionToShow && moduleQuestions.length > 0 && currentQuestionIndex < 0) {
                           const firstQuestionInModule = moduleQuestions[0]
                           const firstIndex = editingTest.questions.findIndex(q => q.id === firstQuestionInModule.id)
                           if (firstIndex >= 0) {
                             questionToShow = editingTest.questions[firstIndex]
                             questionIndex = firstIndex
+                            // Auto-select it if no question is selected
+                            if (currentQuestionIndex < 0) {
+                              setTimeout(() => setCurrentQuestionIndex(firstIndex), 0)
+                            }
                           }
                         }
                         
@@ -861,7 +881,7 @@ export default function TestManagement() {
                         if (questionToShow) {
                           return (
                             <TestQuestionEditor
-                              key={`${questionToShow.id}-${questionIndex}-${module}`}
+                              key={`${questionToShow.id}-${questionIndex}-${module}-${currentQuestionIndex}`}
                               question={questionToShow}
                               onUpdate={(updated) => updateQuestion(questionToShow!.id, updated)}
                               onDelete={() => deleteQuestion(questionToShow!.id)}
@@ -1096,6 +1116,11 @@ export default function TestManagement() {
                           }`}
                         >
                           <div className="font-semibold">{submission.studentName}</div>
+                          {submission.score && (
+                            <div className="text-sm font-medium text-blue-600 mt-1">
+                              Score: {submission.score}
+                            </div>
+                          )}
                           {submission.updatedAt && (
                             <div className="text-xs text-gray-500 mt-1">
                               {format(submission.updatedAt, 'MMM dd, yyyy HH:mm')}

@@ -449,6 +449,9 @@ export default function TakeTestPage() {
           Object.entries(crossedOutOptions).map(([k, v]) => [k, Array.from(v)])
         ),
         highlights: highlights,
+        score: score,
+        correct: correct,
+        total: total,
         updatedAt: new Date(),
       } as any)
 
