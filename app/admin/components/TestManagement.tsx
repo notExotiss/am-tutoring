@@ -216,47 +216,31 @@ export default function TestManagement() {
   }, [activeModule, showForm, editingTest, currentQuestionIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleViewSubmissions = async (test: Test) => {
-    if (!db || !test.id) {
-      console.error('Missing db or test.id:', { db: !!db, testId: test.id })
-      return
-    }
+    if (!db || !test.id) return
     
     try {
       setViewingSubmissions(test)
       const submissionsRef = collection(db, 'testProgress')
       const querySnapshot = await getDocs(submissionsRef)
       
-      console.log('Querying submissions for test:', test.id)
-      console.log('Total testProgress documents:', querySnapshot.size)
-      
       const submissionsList: any[] = []
       querySnapshot.forEach((doc) => {
         const data = doc.data()
-        // Check if this submission is for this test
-        // First try to match by testId, if that doesn't work, try matching by document ID pattern
-        const matchesByTestId = data.testId === test.id
+        // Match by document ID pattern (same as student view uses)
         const matchesByDocId = doc.id.startsWith(`${test.id}_`)
+        const matchesByTestId = data.testId === test.id
         
-        console.log('Checking document:', doc.id, {
-          testId: data.testId,
-          testState: data.testState,
-          matchesByTestId,
-          matchesByDocId,
-          isCompleted: data.testState === 'completed',
-          willInclude: (matchesByTestId || matchesByDocId) && data.testState === 'completed'
-        })
-        
-        // Include if it matches the test (by testId or doc ID) and is completed
-        // Also include if it matches but testState is missing (might be an old format)
-        if (matchesByTestId || matchesByDocId) {
+        if (matchesByDocId || matchesByTestId) {
+          // Extract userId from document ID if not in data (same pattern as student view)
+          const userId = data.userId || (matchesByDocId ? doc.id.split('_')[1] : null)
+          const student = userId ? students.find(s => s.id === userId) : null
+          
+          // Include if completed or if testState is missing (default to completed)
           if (data.testState === 'completed' || !data.testState) {
-            // Get student info
-            const userId = data.userId || (matchesByDocId ? doc.id.split('_')[1] : null)
-            const student = userId ? students.find(s => s.id === userId) : null
             submissionsList.push({
               id: doc.id,
               ...data,
-              testState: data.testState || 'completed', // Default to completed if missing
+              testState: data.testState || 'completed',
               studentName: student?.name || 'Unknown Student',
               studentEmail: student?.email || '',
               updatedAt: data.updatedAt?.toDate() || null,
@@ -265,18 +249,11 @@ export default function TestManagement() {
         }
       })
       
-      console.log('Found submissions:', submissionsList.length)
       setSubmissions(submissionsList)
       if (submissionsList.length > 0) {
         setSelectedSubmission(submissionsList[0])
         setCurrentQuestionViewIndex(0)
         setSubmissionActiveModule('english-m1')
-      } else {
-        // Show a more helpful message
-        toast({
-          title: 'No submissions found',
-          description: `No completed submissions found for test "${test.title}". Make sure students have submitted the test.`,
-        })
       }
     } catch (error) {
       console.error('Error loading submissions:', error)
@@ -1131,12 +1108,11 @@ export default function TestManagement() {
                   
                   {/* Question View */}
                   {selectedSubmission && viewingSubmissions && (() => {
-                    // Use the exact same structure as student view
+                    // Use the exact same structure as student view - viewingSubmission has test data, submissionData has answers
                     const viewingSubmission = {
                       id: viewingSubmissions.id,
                       type: 'test',
                       ...viewingSubmissions,
-                      title: viewingSubmissions.title || '',
                     }
                     const submissionData = {
                       ...selectedSubmission,
