@@ -397,7 +397,7 @@ export default function TakeTestPage() {
   }
 
   const handleSubmitTest = async () => {
-    if (!test || !db) return
+    if (!test || !db || !userId) return
 
     try {
       let correct = 0
@@ -424,12 +424,32 @@ export default function TakeTestPage() {
 
       const score = `${correct}/${total} (${Math.round((correct / total) * 100)}%)`
 
+      // Update test document
       await updateDoc(doc(db, 'tests', test.id), {
         completed: true,
         completedDate: new Date(),
         score: score,
         answers: answers,
         openEndedAnswers: openEndedAnswers,
+      } as any)
+
+      // Save completed state to testProgress
+      const progressRef = doc(collection(db, 'testProgress'), `${test.id}_${userId}`)
+      await setDoc(progressRef, {
+        testId: test.id,
+        userId: userId,
+        testState: 'completed',
+        currentQuestionIndex: currentQuestionIndex,
+        answers: answers,
+        openEndedAnswers: openEndedAnswers,
+        timeRemaining: timeRemaining,
+        isPaused: false,
+        bookmarkedQuestions: Array.from(bookmarkedQuestions),
+        crossedOutOptions: Object.fromEntries(
+          Object.entries(crossedOutOptions).map(([k, v]) => [k, Array.from(v)])
+        ),
+        highlights: highlights,
+        updatedAt: new Date(),
       } as any)
 
       setTestState('completed')
