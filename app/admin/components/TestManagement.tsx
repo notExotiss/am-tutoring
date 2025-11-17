@@ -245,6 +245,7 @@ export default function TestManagement() {
       if (submissionsList.length > 0) {
         setSelectedSubmission(submissionsList[0])
         setCurrentQuestionViewIndex(0)
+        setSubmissionActiveModule('english-m1')
       }
     } catch (error) {
       console.error('Error loading submissions:', error)
@@ -1078,6 +1079,7 @@ export default function TestManagement() {
                           onClick={() => {
                             setSelectedSubmission(submission)
                             setCurrentQuestionViewIndex(0)
+                            setSubmissionActiveModule('english-m1')
                           }}
                           className={`w-full text-left p-3 rounded border-2 transition-colors ${
                             selectedSubmission?.id === submission.id
@@ -1098,23 +1100,26 @@ export default function TestManagement() {
                   
                   {/* Question View */}
                   {selectedSubmission && viewingSubmissions && (() => {
-                    // Organize questions by module
-                    const questionsByModule = {
-                      'english-m1': viewingSubmissions.questions.filter(q => q.section === 'english' && q.module === 1),
-                      'english-m2': viewingSubmissions.questions.filter(q => q.section === 'english' && q.module === 2),
-                      'math-m1': viewingSubmissions.questions.filter(q => q.section === 'math' && q.module === 1),
-                      'math-m2': viewingSubmissions.questions.filter(q => q.section === 'math' && q.module === 2),
+                    // Use the exact same structure as student view
+                    const viewingSubmission = {
+                      id: viewingSubmissions.id,
+                      type: 'test',
+                      ...viewingSubmissions,
+                      title: viewingSubmissions.title || '',
+                    }
+                    const submissionData = {
+                      ...selectedSubmission,
+                      answers: selectedSubmission.answers || {},
+                      openEndedAnswers: selectedSubmission.openEndedAnswers || {},
                     }
                     
-                    const moduleQuestions = questionsByModule[submissionActiveModule]
-                    const currentQuestion = moduleQuestions[currentQuestionViewIndex]
-                    const studentAnswer = currentQuestion?.questionType === 'open-ended' 
-                      ? selectedSubmission.openEndedAnswers?.[currentQuestion?.id]
-                      : selectedSubmission.answers?.[currentQuestion?.id]
-                    const correctAnswer = currentQuestion?.correctAnswer
-                    const isCorrect = currentQuestion?.questionType === 'open-ended'
-                      ? String(studentAnswer || '').trim() === String(correctAnswer || '').trim()
-                      : studentAnswer === correctAnswer
+                    // Organize questions by module
+                    const questionsByModule = {
+                      'english-m1': (viewingSubmission.questions || []).filter((q: any) => q.section === 'english' && q.module === 1),
+                      'english-m2': (viewingSubmission.questions || []).filter((q: any) => q.section === 'english' && q.module === 2),
+                      'math-m1': (viewingSubmission.questions || []).filter((q: any) => q.section === 'math' && q.module === 1),
+                      'math-m2': (viewingSubmission.questions || []).filter((q: any) => q.section === 'math' && q.module === 2),
+                    }
                     
                     return (
                       <div className="flex-1 overflow-y-auto flex flex-col">
@@ -1159,8 +1164,8 @@ export default function TestManagement() {
                               {questionsByModule[module][currentQuestionViewIndex] && (() => {
                                 const q = questionsByModule[module][currentQuestionViewIndex]
                                 const ans = q.questionType === 'open-ended' 
-                                  ? selectedSubmission.openEndedAnswers?.[q.id]
-                                  : selectedSubmission.answers?.[q.id]
+                                  ? submissionData.openEndedAnswers?.[q.id]
+                                  : submissionData.answers?.[q.id]
                                 const correct = q.correctAnswer
                                 const correctCheck = q.questionType === 'open-ended'
                                   ? String(ans || '').trim() === String(correct || '').trim()
