@@ -80,28 +80,40 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
     },
   })
 
-
-  // Update editors when question changes
+  // Update editors when question prop changes (only if content is different to avoid loops)
   useEffect(() => {
-    if (questionEditor && !questionEditor.isDestroyed) {
-      isUpdatingFromProps.current = true
-      questionEditor.commands.setContent(question.questionText || '<p></p>')
-      requestAnimationFrame(() => {
-        isUpdatingFromProps.current = false
-      })
+    if (questionEditor) {
+      const currentContent = questionEditor.getHTML()
+      const newContent = question.questionText || ''
+      // Only update if content is actually different
+      if (currentContent !== newContent) {
+        isUpdatingFromProps.current = true
+        questionEditor.commands.setContent(newContent)
+        // Reset flag after a short delay to allow the update to complete
+        setTimeout(() => {
+          isUpdatingFromProps.current = false
+        }, 0)
+      }
     }
-  }, [question.id, question.questionText, questionEditor])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [question.id, question.questionText])
 
   useEffect(() => {
-    if (passageEditor && !passageEditor.isDestroyed) {
-      isUpdatingFromProps.current = true
-      passageEditor.commands.setContent(question.readingPassage || '<p></p>')
-      requestAnimationFrame(() => {
-        isUpdatingFromProps.current = false
-      })
+    if (passageEditor) {
+      const currentContent = passageEditor.getHTML()
+      const newContent = question.readingPassage || ''
+      // Only update if content is actually different
+      if (currentContent !== newContent) {
+        isUpdatingFromProps.current = true
+        passageEditor.commands.setContent(newContent)
+        // Reset flag after a short delay to allow the update to complete
+        setTimeout(() => {
+          isUpdatingFromProps.current = false
+        }, 0)
+      }
     }
-  }, [question.id, question.readingPassage, passageEditor])
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [question.id, question.readingPassage])
 
   useEffect(() => {
     setImageUrl(question.questionImage || '')
