@@ -232,23 +232,36 @@ export default function TestManagement() {
       const submissionsList: any[] = []
       querySnapshot.forEach((doc) => {
         const data = doc.data()
-        console.log('Checking document:', doc.id, { testId: data.testId, testState: data.testState, matchesTest: data.testId === test.id })
         // Check if this submission is for this test
         // First try to match by testId, if that doesn't work, try matching by document ID pattern
         const matchesByTestId = data.testId === test.id
         const matchesByDocId = doc.id.startsWith(`${test.id}_`)
         
-        if ((matchesByTestId || matchesByDocId) && data.testState === 'completed') {
-          // Get student info
-          const userId = data.userId || (matchesByDocId ? doc.id.split('_')[1] : null)
-          const student = userId ? students.find(s => s.id === userId) : null
-          submissionsList.push({
-            id: doc.id,
-            ...data,
-            studentName: student?.name || 'Unknown Student',
-            studentEmail: student?.email || '',
-            updatedAt: data.updatedAt?.toDate() || null,
-          })
+        console.log('Checking document:', doc.id, {
+          testId: data.testId,
+          testState: data.testState,
+          matchesByTestId,
+          matchesByDocId,
+          isCompleted: data.testState === 'completed',
+          willInclude: (matchesByTestId || matchesByDocId) && data.testState === 'completed'
+        })
+        
+        // Include if it matches the test (by testId or doc ID) and is completed
+        // Also include if it matches but testState is missing (might be an old format)
+        if (matchesByTestId || matchesByDocId) {
+          if (data.testState === 'completed' || !data.testState) {
+            // Get student info
+            const userId = data.userId || (matchesByDocId ? doc.id.split('_')[1] : null)
+            const student = userId ? students.find(s => s.id === userId) : null
+            submissionsList.push({
+              id: doc.id,
+              ...data,
+              testState: data.testState || 'completed', // Default to completed if missing
+              studentName: student?.name || 'Unknown Student',
+              studentEmail: student?.email || '',
+              updatedAt: data.updatedAt?.toDate() || null,
+            })
+          }
         }
       })
       
