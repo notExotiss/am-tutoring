@@ -80,40 +80,30 @@ export default function TestQuestionEditor({ question, onUpdate, onDelete }: Tes
     },
   })
 
-  // Update editors when question prop changes (only if content is different to avoid loops)
+  // Update editors when question changes
   useEffect(() => {
-    if (questionEditor) {
-      const currentContent = questionEditor.getHTML()
-      const newContent = question.questionText || ''
-      // Only update if content is actually different
-      if (currentContent !== newContent) {
-        isUpdatingFromProps.current = true
-        questionEditor.commands.setContent(newContent)
-        // Reset flag after a short delay to allow the update to complete
-        setTimeout(() => {
-          isUpdatingFromProps.current = false
-        }, 0)
-      }
+    if (questionEditor && !questionEditor.isDestroyed) {
+      isUpdatingFromProps.current = true
+      questionEditor.commands.setContent(question.questionText || '')
+      // Use requestAnimationFrame to ensure update completes before resetting flag
+      requestAnimationFrame(() => {
+        isUpdatingFromProps.current = false
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question.id, question.questionText])
+  }, [question.id])
 
   useEffect(() => {
-    if (passageEditor) {
-      const currentContent = passageEditor.getHTML()
-      const newContent = question.readingPassage || ''
-      // Only update if content is actually different
-      if (currentContent !== newContent) {
-        isUpdatingFromProps.current = true
-        passageEditor.commands.setContent(newContent)
-        // Reset flag after a short delay to allow the update to complete
-        setTimeout(() => {
-          isUpdatingFromProps.current = false
-        }, 0)
-      }
+    if (passageEditor && !passageEditor.isDestroyed) {
+      isUpdatingFromProps.current = true
+      passageEditor.commands.setContent(question.readingPassage || '')
+      // Use requestAnimationFrame to ensure update completes before resetting flag
+      requestAnimationFrame(() => {
+        isUpdatingFromProps.current = false
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question.id, question.readingPassage])
+  }, [question.id])
 
   useEffect(() => {
     setImageUrl(question.questionImage || '')
