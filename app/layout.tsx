@@ -20,7 +20,7 @@ const notoSerif = Noto_Serif({
 
 export const metadata: Metadata = {
   title: 'A.M. SAT Tutoring',
-  description: 'Expert SAT tutoring from a high-achieving student. 1510 SAT score, 800 in Math. Located in New Jersey.',
+  description: 'Expert SAT tutoring from a high-achieving student. 1530 SAT score, 800 in Math. Located in New Jersey.',
   generator: 'v0.app',
   icons: {
     icon: [

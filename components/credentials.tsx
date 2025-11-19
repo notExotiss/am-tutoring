@@ -28,7 +28,7 @@ export default function Credentials() {
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 organic-shape -translate-y-1/2 translate-x-1/2"></div>
             <div className="relative z-10">
-              <div className="text-7xl font-black text-blue-600 mb-3">1510</div>
+              <div className="text-7xl font-black text-blue-600 mb-3">1530</div>
               <div className="font-bold text-black text-xl mt-2">Overall SAT Score</div>
               <p className="text-sm text-black/60 mt-2 font-medium">99th percentile nationwide</p>
             </div>
