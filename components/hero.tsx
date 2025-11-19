@@ -49,7 +49,7 @@ export default function Hero() {
       >
         <div className={`mb-6 inline-block rounded-full border-2 border-blue-500 bg-white px-8 py-3 text-sm font-bold text-blue-600 shadow-lg transition-smooth transform ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
           <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse"></span>
-          1530 SAT
+          1510 SAT
         </div>
 
         <h1 className={`text-5xl md:text-7xl font-black tracking-tight transition-smooth transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
@@ -64,7 +64,7 @@ export default function Hero() {
         </h1>
 
         <p className={`mt-6 text-lg md:text-xl text-foreground/70 max-w-2xl leading-relaxed transition-smooth transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ transitionDelay: '100ms' }}>
-          I&apos;m <span className="font-semibold text-foreground">Aarit Malhotra</span>, a sophomore at John P. Stevens High School. I scored a 1530 on the SAT with a perfect 800 in Math. I&apos;ve taken the SAT 2 times, many more practice tests, and have logged countless hours at big-name testing facilities to no avail. The SAT is just pattern recognition, so, with my experience, I can help you find those patterns and give you an exact plan to work your way up.
+          I&apos;m <span className="font-semibold text-foreground">Aarit Malhotra</span>, a sophomore at John P. Stevens High School. I scored a 1510 on the SAT with a perfect 800 in Math. I&apos;ve taken the SAT 2 times, many more practice tests, and have logged countless hours at big-name testing facilities to no avail. The SAT is just pattern recognition, so, with my experience, I can help you find those patterns and give you an exact plan to work your way up.
         </p>
 
         <div className={`mt-10 flex flex-col gap-4 sm:flex-row sm:gap-4 transition-smooth transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ transitionDelay: '200ms' }}>
