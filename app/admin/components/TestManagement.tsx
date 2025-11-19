@@ -85,7 +85,7 @@ export default function TestManagement() {
   const [viewingSubmissions, setViewingSubmissions] = useState<Test | null>(null)
   const [submissions, setSubmissions] = useState<any[]>([])
   const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null)
-  const [currentQuestionViewIndex, setCurrentQuestionViewIndex] = useState(0)
+  const [submissionActiveModule, setSubmissionActiveModule] = useState<'english-m1' | 'english-m2' | 'math-m1' | 'math-m2'>('english-m1')
   const { toast } = useToast()
 
   useEffect(() => {
@@ -208,7 +208,7 @@ export default function TestManagement() {
       setSubmissions(submissionsList)
       if (submissionsList.length > 0) {
         setSelectedSubmission(submissionsList[0])
-        setCurrentQuestionViewIndex(0)
+        setSubmissionActiveModule('english-m1')
       }
     } catch (error) {
       console.error('Error loading submissions:', error)
@@ -1032,7 +1032,7 @@ export default function TestManagement() {
                           key={submission.id}
                           onClick={() => {
                             setSelectedSubmission(submission)
-                            setCurrentQuestionViewIndex(0)
+                            setSubmissionActiveModule('english-m1')
                           }}
                           className={`w-full text-left p-3 rounded border-2 transition-colors ${
                             selectedSubmission?.id === submission.id
@@ -1058,123 +1058,126 @@ export default function TestManagement() {
                   
                   {/* Question View */}
                   {selectedSubmission && viewingSubmissions && (
-                    <div className="flex-1 overflow-y-auto">
-                      <div className="mb-4 flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">{selectedSubmission.studentName}&apos;s Answers</h3>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setCurrentQuestionViewIndex(Math.max(0, currentQuestionViewIndex - 1))}
-                            disabled={currentQuestionViewIndex === 0}
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </Button>
-                          <span className="text-sm font-medium px-2">
-                            Question {currentQuestionViewIndex + 1} of {viewingSubmissions.questions.length}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setCurrentQuestionViewIndex(Math.min(viewingSubmissions.questions.length - 1, currentQuestionViewIndex + 1))}
-                            disabled={currentQuestionViewIndex === viewingSubmissions.questions.length - 1}
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      {viewingSubmissions.questions[currentQuestionViewIndex] && (() => {
-                        const question = viewingSubmissions.questions[currentQuestionViewIndex]
-                        const questionResult = selectedSubmission.questionResults?.[question.id]
-                        const studentAnswer = question.questionType === 'open-ended' 
-                          ? selectedSubmission.openEndedAnswers?.[question.id]
-                          : selectedSubmission.answers?.[question.id]
-                        const isCorrect = questionResult?.correct || false
-                        const correctAnswer = question.correctAnswer
+                    <div className="flex-1 overflow-y-auto flex flex-col">
+                      <Tabs value={submissionActiveModule} onValueChange={(value: string) => {
+                        setSubmissionActiveModule(value as 'english-m1' | 'english-m2' | 'math-m1' | 'math-m2')
+                      }}>
+                        <TabsList className="grid w-full grid-cols-4 mb-4">
+                          <TabsTrigger value="english-m1">English Module 1</TabsTrigger>
+                          <TabsTrigger value="english-m2">English Module 2</TabsTrigger>
+                          <TabsTrigger value="math-m1">Math Module 1</TabsTrigger>
+                          <TabsTrigger value="math-m2">Math Module 2</TabsTrigger>
+                        </TabsList>
                         
-                        return (
-                          <div className="space-y-4">
-                            <div className="p-4 rounded-lg" style={{ backgroundColor: '#eaedfc' }}>
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="bg-black text-white w-8 h-8 flex items-center justify-center font-bold text-sm">
-                                  {currentQuestionViewIndex + 1}
-                                </div>
-                                <Badge className={isCorrect ? 'bg-green-600' : 'bg-red-600'}>
-                                  {isCorrect ? 'Correct' : 'Incorrect'}
-                                </Badge>
-                              </div>
-                            </div>
-                            
-                            <div
-                              className="prose max-w-none mb-4"
-                              dangerouslySetInnerHTML={{ __html: question.questionText }}
-                            />
-                            
-                            {question.questionImage && (
-                              <div className="mb-4">
-                                <img
-                                  src={question.questionImage}
-                                  alt="Question"
-                                  className="max-w-full max-h-[400px] rounded"
-                                />
-                              </div>
-                            )}
-                            
-                            {question.readingPassage && (
-                              <div className="mb-4 p-4 border rounded bg-gray-50">
-                                <div
-                                  className="prose max-w-none"
-                                  dangerouslySetInnerHTML={{ __html: question.readingPassage }}
-                                />
-                              </div>
-                            )}
-                            
-                            {question.questionType === 'open-ended' ? (
-                              <div className="space-y-2">
-                                <div className="p-4 border-2 rounded-lg">
-                                  <div className="text-sm text-gray-600 mb-1">Student Answer:</div>
-                                  <div className="text-lg font-mono">{studentAnswer || '(empty)'}</div>
-                                </div>
-                                <div className={`p-4 border-2 rounded-lg ${isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
-                                  <div className="text-sm text-gray-600 mb-1">Correct Answer:</div>
-                                  <div className="text-lg font-mono">{String(correctAnswer)}</div>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                {question.options.map((option: string, index: number) => {
-                                  const isSelected = studentAnswer === index
-                                  const isCorrectOption = correctAnswer === index
+                        {(['english-m1', 'english-m2', 'math-m1', 'math-m2'] as const).map((module) => {
+                          const questionsByModule = (viewingSubmissions.questions || []).filter((q: any) => {
+                            if (module === 'english-m1') return q.section === 'english' && q.module === 1
+                            if (module === 'english-m2') return q.section === 'english' && q.module === 2
+                            if (module === 'math-m1') return q.section === 'math' && q.module === 1
+                            if (module === 'math-m2') return q.section === 'math' && q.module === 2
+                            return false
+                          })
+                          
+                          return (
+                            <TabsContent key={module} value={module}>
+                              <h3 className="text-lg font-semibold mb-4">{selectedSubmission.studentName}&apos;s Answers</h3>
+                              
+                              <div className="space-y-8">
+                                {questionsByModule.map((question: any, index: number) => {
+                                  const questionResult = selectedSubmission.questionResults?.[question.id]
+                                  const studentAnswer = question.questionType === 'open-ended' 
+                                    ? selectedSubmission.openEndedAnswers?.[question.id]
+                                    : selectedSubmission.answers?.[question.id]
+                                  const isCorrect = questionResult?.correct || false
+                                  const correctAnswer = question.correctAnswer
+                                  
                                   return (
-                                    <div
-                                      key={index}
-                                      className={`p-4 border-2 rounded-lg ${
-                                        isCorrectOption
-                                          ? 'border-green-500 bg-green-50'
-                                          : isSelected
-                                          ? 'border-red-500 bg-red-50'
-                                          : 'border-gray-200'
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-semibold w-6">{String.fromCharCode(65 + index)}</span>
-                                        <span>{option}</span>
-                                        {isCorrectOption && (
-                                          <Badge className="ml-auto bg-green-600">Correct</Badge>
-                                        )}
-                                        {isSelected && !isCorrectOption && (
-                                          <Badge className="ml-auto bg-red-600">Selected</Badge>
-                                        )}
+                                    <div key={question.id} className="space-y-4 pb-8 border-b last:border-b-0">
+                                      <div className="p-4 rounded-lg" style={{ backgroundColor: '#eaedfc' }}>
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <div className="bg-black text-white w-8 h-8 flex items-center justify-center font-bold text-sm">
+                                            {index + 1}
+                                          </div>
+                                          <Badge className={isCorrect ? 'bg-green-600' : 'bg-red-600'}>
+                                            {isCorrect ? 'Correct' : 'Incorrect'}
+                                          </Badge>
+                                        </div>
                                       </div>
+                                      
+                                      <div
+                                        className="prose max-w-none mb-4"
+                                        dangerouslySetInnerHTML={{ __html: question.questionText }}
+                                      />
+                                      
+                                      {question.questionImage && (
+                                        <div className="mb-4">
+                                          <img
+                                            src={question.questionImage}
+                                            alt="Question"
+                                            className="max-w-full max-h-[400px] rounded"
+                                          />
+                                        </div>
+                                      )}
+                                      
+                                      {question.readingPassage && (
+                                        <div className="mb-4 p-4 border rounded bg-gray-50">
+                                          <div
+                                            className="prose max-w-none"
+                                            dangerouslySetInnerHTML={{ __html: question.readingPassage }}
+                                          />
+                                        </div>
+                                      )}
+                                      
+                                      {question.questionType === 'open-ended' ? (
+                                        <div className="space-y-2">
+                                          <div className="p-4 border-2 rounded-lg">
+                                            <div className="text-sm text-gray-600 mb-1">Student Answer:</div>
+                                            <div className="text-lg font-mono">{studentAnswer || '(empty)'}</div>
+                                          </div>
+                                          <div className={`p-4 border-2 rounded-lg ${isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+                                            <div className="text-sm text-gray-600 mb-1">Correct Answer:</div>
+                                            <div className="text-lg font-mono">{String(correctAnswer)}</div>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-2">
+                                          {question.options.map((option: string, optIndex: number) => {
+                                            const isSelected = studentAnswer === optIndex
+                                            const isCorrectOption = correctAnswer === optIndex
+                                            return (
+                                              <div
+                                                key={optIndex}
+                                                className={`p-4 border-2 rounded-lg ${
+                                                  isCorrectOption
+                                                    ? 'border-green-500 bg-green-50'
+                                                    : isSelected
+                                                    ? 'border-red-500 bg-red-50'
+                                                    : 'border-gray-200'
+                                                }`}
+                                              >
+                                                <div className="flex items-center gap-2">
+                                                  <span className="font-semibold w-6">{String.fromCharCode(65 + optIndex)}</span>
+                                                  <span>{option}</span>
+                                                  {isCorrectOption && (
+                                                    <Badge className="ml-auto bg-green-600">Correct</Badge>
+                                                  )}
+                                                  {isSelected && !isCorrectOption && (
+                                                    <Badge className="ml-auto bg-red-600">Selected</Badge>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )
+                                          })}
+                                        </div>
+                                      )}
                                     </div>
                                   )
                                 })}
                               </div>
-                            )}
-                          </div>
-                        )
-                      })()}
+                            </TabsContent>
+                          )
+                        })}
+                      </Tabs>
                     </div>
                   )}
                 </div>
