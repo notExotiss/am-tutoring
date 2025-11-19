@@ -75,6 +75,7 @@ export default function TestManagement() {
   const [editingTest, setEditingTest] = useState<Test | null>(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [activeModule, setActiveModule] = useState<'english-m1' | 'english-m2' | 'math-m1' | 'math-m2'>('english-m1')
+  const [activeQuestionTab, setActiveQuestionTab] = useState<string | undefined>(undefined)
   const [activeModules, setActiveModules] = useState({
     englishM1: true,
     englishM2: true,
@@ -183,77 +184,25 @@ export default function TestManagement() {
     setCurrentQuestionIndex(firstEngM1Index >= 0 ? firstEngM1Index : 0)
   }
 
-  // Auto-select first question in active module when module changes (but not when questions change)
-  const prevActiveModule = useRef(activeModule)
-  const isManualSelection = useRef(false)
-  
-  useEffect(() => {
-    if (!editingTest || !showForm) return
-    
-    // If this was a manual selection, don't auto-select
-    if (isManualSelection.current) {
-      isManualSelection.current = false
-      return
-    }
-    
-    // Only auto-select if the module actually changed
-    if (prevActiveModule.current === activeModule) {
-      return
-    }
-    prevActiveModule.current = activeModule
-    
-    const moduleSection = activeModule.startsWith('english') ? 'english' : 'math'
-    const moduleNumber = activeModule === 'english-m1' || activeModule === 'math-m1' ? 1 : 2
-    
-    // Check if current question is in the active module
-    if (currentQuestionIndex >= 0 && currentQuestionIndex < editingTest.questions.length) {
-      const currentQ = editingTest.questions[currentQuestionIndex]
-      if (currentQ && currentQ.section === moduleSection && currentQ.module === moduleNumber) {
-        // Current question is in the active module, keep it
-        return
-      }
-    }
-    
-    // Find first question in active module
-    const firstQuestionIndex = editingTest.questions.findIndex(q => 
-      q.section === moduleSection && q.module === moduleNumber
-    )
-    if (firstQuestionIndex >= 0) {
-      setCurrentQuestionIndex(firstQuestionIndex)
-    }
-  }, [activeModule, showForm, editingTest]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleViewSubmissions = async (test: Test) => {
     if (!db || !test.id) return
     
     try {
       setViewingSubmissions(test)
-      const submissionsRef = collection(db, 'testProgress')
-      const querySnapshot = await getDocs(submissionsRef)
+      const submissionsRef = collection(db, 'testSubmissions')
+      const q = query(submissionsRef, orderBy('submittedAt', 'desc'))
+      const querySnapshot = await getDocs(q)
       
       const submissionsList: any[] = []
       querySnapshot.forEach((doc) => {
         const data = doc.data()
-        // Match by document ID pattern (same as student view uses)
-        const matchesByDocId = doc.id.startsWith(`${test.id}_`)
-        const matchesByTestId = data.testId === test.id
-        
-        if (matchesByDocId || matchesByTestId) {
-          // Extract userId from document ID if not in data (same pattern as student view)
-          const userId = data.userId || (matchesByDocId ? doc.id.split('_')[1] : null)
-          const student = userId ? students.find(s => s.id === userId) : null
-          
-          // Include if completed or if testState is missing (default to completed)
-          if (data.testState === 'completed' || !data.testState) {
-            submissionsList.push({
-              id: doc.id,
-              ...data,
-              testState: data.testState || 'completed',
-              studentName: student?.name || 'Unknown Student',
-              studentEmail: student?.email || '',
-              updatedAt: data.updatedAt?.toDate() || null,
-            })
-          }
+        if (data.testId === test.id) {
+          submissionsList.push({
+            id: doc.id,
+            ...data,
+            submittedAt: data.submittedAt?.toDate() || null,
+          })
         }
       })
       
@@ -741,7 +690,7 @@ export default function TestManagement() {
           </CardContent>
         </Card>
 
-        {/* Question Tabs and Grid */}
+        {/* Question Tabs */}
         {totalQuestions > 0 && (
           <Card>
             <CardHeader>
@@ -774,128 +723,107 @@ export default function TestManagement() {
                     return false
                   })
                   
+                  // Get the module section and number for creating new questions
+                  const moduleSection = module.startsWith('english') ? 'english' : 'math'
+                  const moduleNumber = module === 'english-m1' || module === 'math-m1' ? 1 : 2
+                  
+                  // Determine how many question slots to show (at least 27, or more if questions exist)
+                  const questionSlots = Math.max(27, moduleQuestions.length)
+                  
+                  // Get the currently selected question in this module
+                  const currentQuestionInModule = currentQuestionIndex >= 0 && currentQuestionIndex < editingTest.questions.length
+                    ? editingTest.questions[currentQuestionIndex]
+                    : null
+                  const isCurrentQuestionInThisModule = currentQuestionInModule && 
+                    currentQuestionInModule.section === moduleSection && 
+                    currentQuestionInModule.module === moduleNumber
+                  
+                  // Determine the active tab value
+                  const activeTabValue = activeQuestionTab && moduleQuestions.find(q => `q-${q.id}` === activeQuestionTab)
+                    ? activeQuestionTab
+                    : isCurrentQuestionInThisModule && currentQuestionInModule
+                    ? `q-${currentQuestionInModule.id}`
+                    : moduleQuestions.length > 0
+                    ? `q-${moduleQuestions[0].id}`
+                    : undefined
+                  
                   return (
                     <TabsContent key={module} value={module} className="mt-4">
-                      <div className="grid grid-cols-9 mb-6" style={{ gap: 0, columnGap: 0, rowGap: 0 }}>
-                        {Array.from({ length: Math.max(27, moduleQuestions.length) }, (_, idx) => {
-                          const question = moduleQuestions[idx]
-                          const globalIndex = question ? editingTest.questions.findIndex(qu => qu.id === question.id) : -1
-                          const isSelected = globalIndex >= 0 && globalIndex === currentQuestionIndex
-                          return (
-                            <button
-                              key={idx}
-                              onClick={async () => {
-                                if (question && globalIndex >= 0) {
-                                  // Question exists, select it and ensure we're on the correct module tab
-                                  const questionModule = question.section === 'english' 
-                                    ? (question.module === 1 ? 'english-m1' : 'english-m2')
-                                    : (question.module === 1 ? 'math-m1' : 'math-m2')
-                                  if (activeModule !== questionModule) {
-                                    setActiveModule(questionModule)
-                                    // Wait for module to change, then set the question index
-                                    setTimeout(() => {
-                                      isManualSelection.current = true
-                                      setCurrentQuestionIndex(globalIndex)
-                                    }, 0)
+                      <Tabs 
+                        value={activeTabValue}
+                        onValueChange={(value: string) => {
+                          setActiveQuestionTab(value)
+                          const questionId = value.replace('q-', '')
+                          const questionIndex = editingTest.questions.findIndex(q => q.id === questionId)
+                          if (questionIndex >= 0) {
+                            setCurrentQuestionIndex(questionIndex)
+                          }
+                        }}
+                      >
+                        <TabsList className="flex-wrap h-auto gap-1 mb-4">
+                          {Array.from({ length: questionSlots }, (_, idx) => {
+                            const question = moduleQuestions[idx]
+                            const questionId = question?.id || `new-${idx}`
+                            const questionTabValue = `q-${questionId}`
+                            
+                            return (
+                              <TabsTrigger 
+                                key={questionId}
+                                value={questionTabValue}
+                                onClick={() => {
+                                  if (!question) {
+                                    // Create new question for this position
+                                    const newQuestion: Question = {
+                                      id: `q-${Date.now()}-${idx}`,
+                                      questionText: '',
+                                      options: ['', '', '', ''],
+                                      correctAnswer: 0,
+                                      module: moduleNumber,
+                                      section: moduleSection,
+                                      questionType: 'multiple-choice' as const,
+                                    }
+                                    const allQuestions = [...editingTest.questions, newQuestion]
+                                    const newIndex = allQuestions.length - 1
+                                    setEditingTest({ ...editingTest, questions: allQuestions })
+                                    setCurrentQuestionIndex(newIndex)
+                                    setActiveQuestionTab(`q-${newQuestion.id}`)
                                   } else {
-                                    isManualSelection.current = true
-                                    setCurrentQuestionIndex(globalIndex)
+                                    setActiveQuestionTab(`q-${question.id}`)
+                                    const questionIndex = editingTest.questions.findIndex(q => q.id === question.id)
+                                    if (questionIndex >= 0) {
+                                      setCurrentQuestionIndex(questionIndex)
+                                    }
                                   }
-                                } else {
-                                  // Create new question for this position
-                                  const moduleSection = module.startsWith('english') ? 'english' : 'math'
-                                  const moduleNumber = module === 'english-m1' || module === 'math-m1' ? 1 : 2
-                                  const newQuestion: Question = {
-                                    id: `q-${Date.now()}-${idx}`,
-                                    questionText: '',
-                                    options: ['', '', '', ''],
-                                    correctAnswer: 0,
-                                    module: moduleNumber,
-                                    section: moduleSection,
-                                    questionType: 'multiple-choice' as const,
-                                  }
-                                  const allQuestions = [...editingTest.questions, newQuestion]
-                                  const newIndex = allQuestions.length - 1
-                                  // Update both states together
-                                  setEditingTest({ ...editingTest, questions: allQuestions })
-                                  setCurrentQuestionIndex(newIndex)
-                                }
-                              }}
-                              className={`flex items-center justify-center text-sm font-medium transition-all ${
-                                isSelected
-                                  ? 'border-2 border-black bg-white text-black'
-                                  : 'border border-gray-300 bg-white text-black hover:border-gray-400'
-                              }`}
-                              style={{
-                                borderRadius: '6px',
-                                minWidth: '50px',
-                                width: 'auto',
-                                height: '36px',
-                                paddingLeft: '12px',
-                                paddingRight: '12px',
-                                borderWidth: isSelected ? '2px' : '1px',
-                                borderColor: isSelected ? '#000000' : '#d1d5db',
-                                margin: 0,
-                              }}
-                              title={question ? `Question ${idx + 1}${question.questionText ? ' (Has content)' : ' (Empty)'}` : `Question ${idx + 1} (Click to create)`}
-                            >
-                              {idx + 1}
-                            </button>
+                                }}
+                                className="min-w-[50px]"
+                              >
+                                {idx + 1}
+                              </TabsTrigger>
+                            )
+                          })}
+                        </TabsList>
+                        
+                        {moduleQuestions.map((question) => {
+                          const questionTabValue = `q-${question.id}`
+                          
+                          return (
+                            <TabsContent key={questionTabValue} value={questionTabValue}>
+                              <TestQuestionEditor
+                                question={question}
+                                onUpdate={(updated) => updateQuestion(question.id, updated)}
+                                onDelete={() => deleteQuestion(question.id)}
+                              />
+                            </TabsContent>
                           )
                         })}
-                      </div>
-                      
-                      {(() => {
-                        const moduleSection = module.split('-')[0]
-                        const moduleNumber = parseInt(module.split('-')[1])
                         
-                        // First, check if currentQuestionIndex points to a question in this module
-                        let questionToShow = null
-                        let questionIndex = -1
-                        
-                        if (currentQuestionIndex >= 0 && currentQuestionIndex < editingTest.questions.length) {
-                          const currentQ = editingTest.questions[currentQuestionIndex]
-                          // Show editor if current question is in this module
-                          if (currentQ && currentQ.section === moduleSection && currentQ.module === moduleNumber) {
-                            questionToShow = currentQ
-                            questionIndex = currentQuestionIndex
-                          }
-                        }
-                        
-                        // Only show first question if no question is selected in this module AND no question is selected at all
-                        // This prevents showing the first question when a question in another module is selected
-                        if (!questionToShow && moduleQuestions.length > 0 && currentQuestionIndex < 0) {
-                          const firstQuestionInModule = moduleQuestions[0]
-                          const firstIndex = editingTest.questions.findIndex(q => q.id === firstQuestionInModule.id)
-                          if (firstIndex >= 0) {
-                            questionToShow = editingTest.questions[firstIndex]
-                            questionIndex = firstIndex
-                            // Auto-select it if no question is selected
-                            if (currentQuestionIndex < 0) {
-                              setTimeout(() => setCurrentQuestionIndex(firstIndex), 0)
-                            }
-                          }
-                        }
-                        
-                        // Show editor if we have a question to show
-                        if (questionToShow) {
-                          return (
-                            <TestQuestionEditor
-                              key={`${questionToShow.id}-${questionIndex}-${module}-${currentQuestionIndex}`}
-                              question={questionToShow}
-                              onUpdate={(updated) => updateQuestion(questionToShow!.id, updated)}
-                              onDelete={() => deleteQuestion(questionToShow!.id)}
-                            />
-                          )
-                        }
-                        
-                        // If no questions exist in this module, show empty state
-                        return (
+                        {/* Empty state for new questions */}
+                        {moduleQuestions.length === 0 && (
                           <div className="text-center py-12 text-gray-500">
-                            <p>Click on a question number above to create or edit a question.</p>
+                            <p>Click on a question number above to create a question.</p>
                           </div>
-                        )
-                      })()}
+                        )}
+                      </Tabs>
                     </TabsContent>
                   )
                 })}
@@ -1121,9 +1049,9 @@ export default function TestManagement() {
                               Score: {submission.score}
                             </div>
                           )}
-                          {submission.updatedAt && (
+                          {submission.submittedAt && (
                             <div className="text-xs text-gray-500 mt-1">
-                              {format(submission.updatedAt, 'MMM dd, yyyy HH:mm')}
+                              {format(submission.submittedAt, 'MMM dd, yyyy HH:mm')}
                             </div>
                           )}
                         </button>

@@ -424,6 +424,30 @@ export default function TakeTestPage() {
 
       const score = `${correct}/${total} (${Math.round((correct / total) * 100)}%)`
 
+      // Calculate question results
+      const questionResults = test.questions.map(question => {
+        let isCorrect = false
+        if (question.questionType === 'open-ended') {
+          const studentAnswer = openEndedAnswers[question.id]?.trim() || ''
+          const correctAnswer = String(question.correctAnswer || '').trim()
+          if (studentAnswer && correctAnswer) {
+            const normalizedStudent = studentAnswer.replace(/\s+/g, '')
+            const normalizedCorrect = correctAnswer.replace(/\s+/g, '')
+            isCorrect = normalizedStudent === normalizedCorrect
+          }
+        } else {
+          isCorrect = answers[question.id] === question.correctAnswer
+        }
+        return {
+          questionId: question.id,
+          isCorrect,
+          studentAnswer: question.questionType === 'open-ended' 
+            ? openEndedAnswers[question.id] 
+            : answers[question.id],
+          correctAnswer: question.correctAnswer,
+        }
+      })
+
       // Update test document
       await updateDoc(doc(db, 'tests', test.id), {
         completed: true,
@@ -433,26 +457,18 @@ export default function TakeTestPage() {
         openEndedAnswers: openEndedAnswers,
       } as any)
 
-      // Save completed state to testProgress
-      const progressRef = doc(collection(db, 'testProgress'), `${test.id}_${userId}`)
-      await setDoc(progressRef, {
+      // Save student submission with results (same as assignments)
+      await setDoc(doc(collection(db, 'testSubmissions'), `${test.id}_${userId}`), {
         testId: test.id,
         userId: userId,
-        testState: 'completed',
-        currentQuestionIndex: currentQuestionIndex,
-        answers: answers,
-        openEndedAnswers: openEndedAnswers,
-        timeRemaining: timeRemaining,
-        isPaused: false,
-        bookmarkedQuestions: Array.from(bookmarkedQuestions),
-        crossedOutOptions: Object.fromEntries(
-          Object.entries(crossedOutOptions).map(([k, v]) => [k, Array.from(v)])
-        ),
-        highlights: highlights,
+        studentName: studentName,
         score: score,
         correct: correct,
         total: total,
-        updatedAt: new Date(),
+        answers: answers,
+        openEndedAnswers: openEndedAnswers,
+        questionResults: questionResults,
+        submittedAt: new Date(),
       } as any)
 
       setTestState('completed')
