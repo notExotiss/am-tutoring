@@ -424,27 +424,31 @@ export default function TakeTestPage() {
 
       const score = `${correct}/${total} (${Math.round((correct / total) * 100)}%)`
 
-      // Calculate question results
-      const questionResults = test.questions.map(question => {
-        let isCorrect = false
+      // Calculate question results (same structure as assignments)
+      const questionResults: Record<string, { correct: boolean, studentAnswer: number | string, correctAnswer: number | string }> = {}
+      
+      test.questions.forEach(question => {
         if (question.questionType === 'open-ended') {
+          // Compare student answer with correct answer (normalize for comparison)
           const studentAnswer = openEndedAnswers[question.id]?.trim() || ''
           const correctAnswer = String(question.correctAnswer || '').trim()
+          let isCorrect = false
           if (studentAnswer && correctAnswer) {
+            // Normalize answers for comparison (handle fractions, decimals, etc.)
             const normalizedStudent = studentAnswer.replace(/\s+/g, '')
             const normalizedCorrect = correctAnswer.replace(/\s+/g, '')
-            isCorrect = normalizedStudent === normalizedCorrect
+            if (normalizedStudent === normalizedCorrect) {
+              isCorrect = true
+            }
           }
+          questionResults[question.id] = { correct: isCorrect, studentAnswer, correctAnswer }
         } else {
-          isCorrect = answers[question.id] === question.correctAnswer
-        }
-        return {
-          questionId: question.id,
-          isCorrect,
-          studentAnswer: question.questionType === 'open-ended' 
-            ? openEndedAnswers[question.id] 
-            : answers[question.id],
-          correctAnswer: question.correctAnswer,
+          const isCorrect = answers[question.id] === question.correctAnswer
+          questionResults[question.id] = { 
+            correct: isCorrect, 
+            studentAnswer: answers[question.id] ?? '', 
+            correctAnswer: question.correctAnswer 
+          }
         }
       })
 
@@ -457,16 +461,31 @@ export default function TakeTestPage() {
         openEndedAnswers: openEndedAnswers,
       } as any)
 
+      // Clean answers and openEndedAnswers to remove undefined values
+      const cleanAnswers: Record<string, number | string> = {}
+      Object.keys(answers).forEach(key => {
+        if (answers[key] !== undefined) {
+          cleanAnswers[key] = answers[key]
+        }
+      })
+      
+      const cleanOpenEndedAnswers: Record<string, string> = {}
+      Object.keys(openEndedAnswers).forEach(key => {
+        if (openEndedAnswers[key] !== undefined) {
+          cleanOpenEndedAnswers[key] = openEndedAnswers[key]
+        }
+      })
+      
       // Save student submission with results (same as assignments)
       await setDoc(doc(collection(db, 'testSubmissions'), `${test.id}_${userId}`), {
         testId: test.id,
         userId: userId,
-        studentName: studentName,
+        studentName: studentName || 'Student',
         score: score,
         correct: correct,
         total: total,
-        answers: answers,
-        openEndedAnswers: openEndedAnswers,
+        answers: cleanAnswers,
+        openEndedAnswers: cleanOpenEndedAnswers,
         questionResults: questionResults,
         submittedAt: new Date(),
       } as any)
