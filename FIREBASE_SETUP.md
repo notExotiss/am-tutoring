@@ -138,7 +138,10 @@ service cloud.firestore {
    - Add all `NEXT_PUBLIC_FIREBASE_*` variables
 2. Add your Vercel domain to Firebase authorized domains:
    - Go to Authentication > Settings > Authorized domains
-   - Add your Vercel deployment URL
+   - Add your Vercel deployment URL(s):
+     - `https://am-tutoring-n4ps0krym-legolord007s-projects.vercel.app/`
+     - Your production domain (if different)
+     - Any other preview deployment URLs you want to allow
 
 ## Step 8: Test the Setup
 

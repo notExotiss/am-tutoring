@@ -42,6 +42,22 @@ interface Assignment {
 
 type AssignmentState = 'not-started' | 'in-progress' | 'completed'
 
+type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink'
+
+interface HighlightRange {
+  start: number
+  end: number
+  id: string
+  color: HighlightColor
+}
+
+const HIGHLIGHT_COLORS: Record<HighlightColor, string> = {
+  yellow: '#fef08a',
+  green: '#bbf7d0',
+  blue: '#bfdbfe',
+  pink: '#fbcfe8',
+}
+
 export default function TakeAssignmentPage() {
   const params = useParams()
   const router = useRouter()
@@ -66,8 +82,8 @@ export default function TakeAssignmentPage() {
   const [crossedOutOptions, setCrossedOutOptions] = useState<Record<string, Set<number>>>({})
   const [openEndedAnswers, setOpenEndedAnswers] = useState<Record<string, string>>({})
   const [showCrossOutOptions, setShowCrossOutOptions] = useState(false)
-  const [highlightToRemove, setHighlightToRemove] = useState<{questionId: string, highlightId: string, position: {top: number, left: number}} | null>(null)
-  const [highlights, setHighlights] = useState<Record<string, Array<{start: number, end: number, id: string}>>>({})
+  const [highlightToRemove, setHighlightToRemove] = useState<{questionId: string, targetKey: string, highlightId: string, position: {top: number, left: number}} | null>(null)
+  const [highlights, setHighlights] = useState<Record<string, HighlightRange[]>>({})
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [showReviewPage, setShowReviewPage] = useState(false)
   const [studentName, setStudentName] = useState('Student')
@@ -145,6 +161,37 @@ export default function TakeAssignmentPage() {
     }
   }
 
+  const normalizeHighlights = (rawHighlights: any): Record<string, HighlightRange[]> => {
+    if (!rawHighlights || typeof rawHighlights !== 'object') {
+      return {}
+    }
+
+    return Object.fromEntries(
+      Object.entries(rawHighlights).map(([targetKey, value]) => {
+        const safeValue = Array.isArray(value) ? value : []
+        const normalized = safeValue
+          .filter((item: any) => item && typeof item.start === 'number' && typeof item.end === 'number')
+          .map((item: any) => {
+            const color: HighlightColor =
+              item.color === 'green' || item.color === 'blue' || item.color === 'pink' || item.color === 'yellow'
+                ? item.color
+                : 'yellow'
+            return {
+              start: item.start,
+              end: item.end,
+              id: typeof item.id === 'string' ? item.id : `${Date.now()}-${Math.random()}`,
+              color,
+            }
+          })
+        return [targetKey, normalized]
+      })
+    )
+  }
+
+  const getPassageTargetKey = (questionId: string) => questionId
+  const getQuestionTargetKey = (questionId: string) => `${questionId}::question`
+  const getOptionTargetKey = (questionId: string, optionIndex: number) => `${questionId}::option::${optionIndex}`
+
   const loadProgress = async () => {
     if (!db || !assignment || !userId) return
     
@@ -169,7 +216,7 @@ export default function TakeAssignmentPage() {
               Object.entries(crossedOut).map(([k, v]) => [k, new Set(v as number[])])
             )
           )
-          setHighlights(data.highlights || {})
+          setHighlights(normalizeHighlights(data.highlights))
         }
       }
     } catch (error) {
@@ -412,78 +459,118 @@ export default function TakeAssignmentPage() {
     })
   }
 
-  const handleTextSelection = (questionId: string) => {
-    if (!highlightMode || !assignment) return
-    
+  const handleTextSelection = (targetKey: string, container: HTMLElement) => {
+    if (!highlightMode) return
+
     const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-    
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return
+
     const range = selection.getRangeAt(0)
-    const passageElement = document.querySelector(`[data-question-id="${questionId}"]`)
-    if (!passageElement || !passageElement.contains(range.commonAncestorContainer)) return
-    
+    if (!container.contains(range.commonAncestorContainer)) return
+
     const selectedText = selection.toString().trim()
     if (!selectedText) return
-    
-    // Calculate absolute positions relative to the passage element
-    const passageText = passageElement.textContent || ''
-    const rangeClone = range.cloneRange()
-    rangeClone.setStartBefore(passageElement)
-    rangeClone.setEnd(range.startContainer, range.startOffset)
-    const startOffset = rangeClone.toString().length
-    
-    rangeClone.setStartBefore(passageElement)
-    rangeClone.setEnd(range.endContainer, range.endOffset)
-    const endOffset = rangeClone.toString().length
-    
-    const highlightId = `${Date.now()}-${Math.random()}`
-    const newHighlights = { ...highlights }
-    if (!newHighlights[questionId]) {
-      newHighlights[questionId] = []
+
+    const startRange = range.cloneRange()
+    startRange.selectNodeContents(container)
+    startRange.setEnd(range.startContainer, range.startOffset)
+    const startOffset = startRange.toString().length
+
+    const endRange = range.cloneRange()
+    endRange.selectNodeContents(container)
+    endRange.setEnd(range.endContainer, range.endOffset)
+    const endOffset = endRange.toString().length
+
+    if (endOffset <= startOffset) {
+      selection.removeAllRanges()
+      return
     }
-    newHighlights[questionId].push({ start: startOffset, end: endOffset, id: highlightId })
-    setHighlights(newHighlights)
-    
-    // Clear selection
+
+    const highlightId = `${Date.now()}-${Math.random()}`
+    setHighlights((prev) => ({
+      ...prev,
+      [targetKey]: [
+        ...(prev[targetKey] || []),
+        { start: startOffset, end: endOffset, id: highlightId, color: 'yellow' },
+      ],
+    }))
+    setHighlightToRemove(null)
     selection.removeAllRanges()
   }
 
-  const removeHighlight = (questionId: string, highlightId: string) => {
-    const newHighlights = { ...highlights }
-    if (newHighlights[questionId]) {
-      newHighlights[questionId] = newHighlights[questionId].filter(h => h.id !== highlightId)
-      if (newHighlights[questionId].length === 0) {
-        delete newHighlights[questionId]
+  const removeHighlight = (targetKey: string, highlightId: string) => {
+    setHighlights((prev) => {
+      if (!prev[targetKey]) return prev
+      const nextHighlights = prev[targetKey].filter((highlight) => highlight.id !== highlightId)
+      const next = { ...prev }
+      if (nextHighlights.length > 0) {
+        next[targetKey] = nextHighlights
+      } else {
+        delete next[targetKey]
       }
-    }
-    setHighlights(newHighlights)
+      return next
+    })
   }
 
-  const renderPassageWithHighlights = (passage: string, questionId: string) => {
-    if (!highlights[questionId] || highlights[questionId].length === 0) {
-      return passage
+  const updateHighlightColor = (targetKey: string, highlightId: string, color: HighlightColor) => {
+    setHighlights((prev) => {
+      if (!prev[targetKey]) return prev
+      return {
+        ...prev,
+        [targetKey]: prev[targetKey].map((highlight) =>
+          highlight.id === highlightId ? { ...highlight, color } : highlight
+        ),
+      }
+    })
+  }
+
+  const handleHighlightClick = (event: any) => {
+    const target = event.target as HTMLElement
+    const highlightMark = target.closest('mark[data-highlight-id]') as HTMLElement | null
+    if (!highlightMark) return
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    const highlightId = highlightMark.getAttribute('data-highlight-id')
+    const targetKey = highlightMark.getAttribute('data-highlight-target-key')
+    const markQuestionId = highlightMark.getAttribute('data-question-id')
+    if (!highlightId || !targetKey || !markQuestionId) return
+
+    const rect = highlightMark.getBoundingClientRect()
+    setHighlightToRemove({
+      questionId: markQuestionId,
+      targetKey,
+      highlightId,
+      position: {
+        top: Math.max(8, rect.top - 52),
+        left: rect.left + (rect.width / 2),
+      },
+    })
+  }
+
+  const renderContentWithHighlights = (content: string, questionId: string, targetKey: string) => {
+    const targetHighlights = highlights[targetKey]
+    if (!targetHighlights || targetHighlights.length === 0) {
+      return content
     }
-    
+
     const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = passage
-    const textContent = tempDiv.textContent || ''
-    const sortedHighlights = [...highlights[questionId]].sort((a, b) => b.start - a.start)
-    
+    tempDiv.innerHTML = content
+    const sortedHighlights = [...targetHighlights].sort((a, b) => b.start - a.start)
+
     sortedHighlights.forEach((highlight) => {
+      if (highlight.end <= highlight.start) return
+
       let currentPos = 0
-      const walker = document.createTreeWalker(
-        tempDiv,
-        NodeFilter.SHOW_TEXT,
-        null
-      )
-      
+      const walker = document.createTreeWalker(tempDiv, NodeFilter.SHOW_TEXT, null)
       let node: Node | null = null
       let startNode: Node | null = null
       let endNode: Node | null = null
       let startOffset = 0
       let endOffset = 0
-      
-      while (node = walker.nextNode()) {
+
+      while ((node = walker.nextNode())) {
         const nodeLength = node.textContent?.length || 0
         if (currentPos <= highlight.start && highlight.start < currentPos + nodeLength) {
           startNode = node
@@ -496,50 +583,31 @@ export default function TakeAssignmentPage() {
         }
         currentPos += nodeLength
       }
-      
+
       if (startNode && endNode) {
         const range = document.createRange()
         range.setStart(startNode, startOffset)
         range.setEnd(endNode, endOffset)
-        
+
         const mark = document.createElement('mark')
-        mark.style.backgroundColor = '#fef0b1'
+        mark.style.backgroundColor = HIGHLIGHT_COLORS[highlight.color || 'yellow']
         mark.style.cursor = 'pointer'
+        mark.style.borderRadius = '2px'
+        mark.style.padding = '0 1px'
         mark.setAttribute('data-highlight-id', highlight.id)
+        mark.setAttribute('data-highlight-target-key', targetKey)
         mark.setAttribute('data-question-id', questionId)
-        mark.onmouseenter = (e) => {
-          const target = e.target as HTMLElement
-          if (target.tagName === 'MARK') {
-            const rect = target.getBoundingClientRect()
-            setHighlightToRemove({ 
-              questionId, 
-              highlightId: highlight.id,
-              position: {
-                top: rect.top - 40,
-                left: rect.left + (rect.width / 2)
-              }
-            })
-          }
-        }
-        mark.onmouseleave = () => {
-          setHighlightToRemove(null)
-        }
-        mark.onclick = (e) => {
-          e.stopPropagation()
-          removeHighlight(questionId, highlight.id)
-          setHighlightToRemove(null)
-        }
-        
+
         try {
           range.surroundContents(mark)
-        } catch (e) {
+        } catch (error) {
           const contents = range.extractContents()
           mark.appendChild(contents)
           range.insertNode(mark)
         }
       }
     })
-    
+
     return tempDiv.innerHTML
   }
 
@@ -570,30 +638,26 @@ export default function TakeAssignmentPage() {
   }
 
   useEffect(() => {
-    (window as any).removeHighlight = (qId: string, hId: string) => {
-      removeHighlight(qId, hId)
-    }
-    return () => {
-      delete (window as any).removeHighlight
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement
       if (!target.closest('.more-menu-container')) {
         setShowMoreMenu(false)
       }
+      if (highlightToRemove && !target.closest('.highlight-menu') && !target.closest('mark[data-highlight-id]')) {
+        setHighlightToRemove(null)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showMoreMenu])
+  }, [showMoreMenu, highlightToRemove])
 
   const currentQuestion = assignment?.questions[currentQuestionIndex]
   const isEnglish = currentQuestion?.section === 'english'
   const isMath = currentQuestion?.section === 'math'
   const isOpenEnded = currentQuestion?.questionType === 'open-ended'
+  const activeHighlightColor = highlightToRemove
+    ? (highlights[highlightToRemove.targetKey]?.find((highlight) => highlight.id === highlightToRemove.highlightId)?.color || 'yellow')
+    : 'yellow'
 
   if (loading) {
     return (
@@ -958,37 +1022,24 @@ export default function TakeAssignmentPage() {
               <div 
                 className="prose max-w-none"
                 data-question-id={currentQuestion.id}
+                data-highlight-target-key={getPassageTargetKey(currentQuestion.id)}
                 style={{ 
                   fontFamily: 'var(--font-noto-serif), serif',
                   userSelect: highlightMode ? 'text' : 'auto',
                   cursor: highlightMode ? 'text' : 'default'
                 }}
-                onMouseUp={() => handleTextSelection(currentQuestion.id)}
+                onMouseUp={(event) =>
+                  handleTextSelection(getPassageTargetKey(currentQuestion.id), event.currentTarget)
+                }
+                onClick={handleHighlightClick}
                 dangerouslySetInnerHTML={{ 
-                  __html: renderPassageWithHighlights(currentQuestion.readingPassage || '', currentQuestion.id)
+                  __html: renderContentWithHighlights(
+                    currentQuestion.readingPassage || '',
+                    currentQuestion.id,
+                    getPassageTargetKey(currentQuestion.id)
+                  )
                 }}
               />
-              {/* Highlight removal popup */}
-              {highlightToRemove && highlightToRemove.questionId === currentQuestion.id && (
-                <div 
-                  className="fixed bg-white border border-gray-300 rounded shadow-lg p-2 z-50 pointer-events-auto"
-                  style={{
-                    top: `${highlightToRemove.position.top}px`,
-                    left: `${highlightToRemove.position.left}px`,
-                    transform: 'translateX(-50%)'
-                  }}
-                >
-                  <button
-                    onClick={() => {
-                      removeHighlight(highlightToRemove.questionId, highlightToRemove.highlightId)
-                      setHighlightToRemove(null)
-                    }}
-                    className="text-xs text-red-600 hover:text-red-800 px-2 py-1 whitespace-nowrap"
-                  >
-                    Remove Highlight
-                  </button>
-                </div>
-              )}
             </div>
             
             <div
@@ -1099,8 +1150,25 @@ export default function TakeAssignmentPage() {
 
               <div
                 className="prose max-w-none mb-6"
-                style={{ fontFamily: 'var(--font-noto-serif), serif' }}
-                dangerouslySetInnerHTML={{ __html: processMathInText(currentQuestion.questionText) }}
+                data-question-id={currentQuestion.id}
+                data-highlight-target-key={getQuestionTargetKey(currentQuestion.id)}
+                style={{
+                  fontFamily: 'var(--font-noto-serif), serif',
+                  userSelect: isEnglish && highlightMode ? 'text' : 'auto',
+                  cursor: isEnglish && highlightMode ? 'text' : 'default',
+                }}
+                onMouseUp={(event) => {
+                  if (!isEnglish) return
+                  handleTextSelection(getQuestionTargetKey(currentQuestion.id), event.currentTarget)
+                }}
+                onClick={isEnglish ? handleHighlightClick : undefined}
+                dangerouslySetInnerHTML={{
+                  __html: renderContentWithHighlights(
+                    processMathInText(currentQuestion.questionText),
+                    currentQuestion.id,
+                    getQuestionTargetKey(currentQuestion.id)
+                  ),
+                }}
               />
 
                {currentQuestion.questionImage && (
@@ -1128,12 +1196,17 @@ export default function TakeAssignmentPage() {
                      return (
                        <label
                          key={index}
-                         className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors relative ${
-                           answers[currentQuestion.id] === index
-                             ? 'border-blue-600 bg-blue-50'
-                             : 'border-gray-200 hover:border-gray-300'
-                         } ${isCrossedOut ? 'opacity-50' : ''}`}
-                       >
+                          className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors relative ${
+                            answers[currentQuestion.id] === index
+                              ? 'border-blue-600 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          } ${isCrossedOut ? 'opacity-50' : ''}`}
+                          onClick={(event) => {
+                            if (isEnglish && highlightMode && !(event.target as HTMLElement).closest('button')) {
+                              event.preventDefault()
+                            }
+                          }}
+                        >
                          <div className="flex items-center gap-3 flex-1">
                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                              answers[currentQuestion.id] === index
@@ -1154,7 +1227,27 @@ export default function TakeAssignmentPage() {
                           <span className="font-semibold w-8 text-lg flex-shrink-0">{String.fromCharCode(65 + index)}</span>
                           <span 
                             className={`flex-1 ${isCrossedOut ? 'line-through' : ''}`}
-                            dangerouslySetInnerHTML={{ __html: processMathInText(option) }}
+                            data-question-id={currentQuestion.id}
+                            data-highlight-target-key={getOptionTargetKey(currentQuestion.id, index)}
+                            style={{
+                              userSelect: isEnglish && highlightMode ? 'text' : 'auto',
+                              cursor: isEnglish && highlightMode ? 'text' : 'default',
+                            }}
+                            onMouseUp={(event) => {
+                              if (!isEnglish) return
+                              handleTextSelection(
+                                getOptionTargetKey(currentQuestion.id, index),
+                                event.currentTarget
+                              )
+                            }}
+                            onClick={isEnglish ? handleHighlightClick : undefined}
+                            dangerouslySetInnerHTML={{
+                              __html: renderContentWithHighlights(
+                                processMathInText(option),
+                                currentQuestion.id,
+                                getOptionTargetKey(currentQuestion.id, index)
+                              ),
+                            }}
                           />
                          </div>
                          {isEnglish && showCrossOutOptions && (
@@ -1201,6 +1294,43 @@ export default function TakeAssignmentPage() {
           )}
         </div>
       </div>
+
+      {highlightToRemove && highlightToRemove.questionId === currentQuestion?.id && (
+        <div
+          className="fixed bg-white border border-gray-300 rounded shadow-lg p-2 z-50 pointer-events-auto highlight-menu"
+          style={{
+            top: `${highlightToRemove.position.top}px`,
+            left: `${highlightToRemove.position.left}px`,
+            transform: 'translateX(-50%)',
+          }}
+        >
+          <div className="flex items-center gap-1 mb-1">
+            {(Object.keys(HIGHLIGHT_COLORS) as HighlightColor[]).map((color) => (
+              <button
+                key={color}
+                onClick={() => {
+                  updateHighlightColor(highlightToRemove.targetKey, highlightToRemove.highlightId, color)
+                  setHighlightToRemove(null)
+                }}
+                className={`w-5 h-5 rounded border ${
+                  activeHighlightColor === color ? 'border-gray-900' : 'border-gray-300'
+                }`}
+                style={{ backgroundColor: HIGHLIGHT_COLORS[color] }}
+                title={`Set ${color} highlight`}
+              />
+            ))}
+          </div>
+          <button
+            onClick={() => {
+              removeHighlight(highlightToRemove.targetKey, highlightToRemove.highlightId)
+              setHighlightToRemove(null)
+            }}
+            className="text-xs text-red-600 hover:text-red-800 px-2 py-1 whitespace-nowrap w-full text-left"
+          >
+            Remove Highlight
+          </button>
+        </div>
+      )}
 
       <footer className="text-gray-900 px-6 py-3 flex items-center justify-between relative" style={{ backgroundColor: '#eaedfc' }}>
         <div className="absolute top-0 left-0 right-0" style={{ 
