@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { practiceQuestionsByDifficulty, type PracticeQuestion } from '@/data/practice-questions'
 import TestQuestionEditor from './TestQuestionEditor'
 
 interface AssignmentQuestion {
@@ -197,6 +198,7 @@ export default function AssignmentManagement() {
   const [viewingSubmissions, setViewingSubmissions] = useState<Assignment | null>(null)
   const [submissions, setSubmissions] = useState<any[]>([])
   const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null)
+  const [isCreatingPracticeAssignments, setIsCreatingPracticeAssignments] = useState(false)
   const { toast } = useToast()
 
   const sensors = useSensors(
@@ -413,6 +415,67 @@ export default function AssignmentManagement() {
         description: 'Failed to save assignment.',
         variant: 'destructive',
       })
+    }
+  }
+
+  const handleCreatePracticeAssignments = async () => {
+    if (!db || students.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'At least one student must exist before seeding practice assignments.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsCreatingPracticeAssignments(true)
+
+    try {
+      const studentIds = students.map((student) => student.id)
+      const studentEmails = students.map((student) => student.email).filter(Boolean)
+      const practiceQuestionBank = practiceQuestionsByDifficulty as Record<string, PracticeQuestion[]>
+      const difficultyOrder = ['easy', 'medium', 'hard'] as const
+
+      for (const difficulty of difficultyOrder) {
+        const questions: PracticeQuestion[] = (practiceQuestionBank[difficulty] || []).map((question, index) => ({
+          ...question,
+          id: `${difficulty}-${index}-${question.id}`,
+        }))
+
+        const practiceAssignment = {
+          title: `SAT Reading & Writing Practice - ${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1)}`,
+          description: `Difficulty-based practice assignment for ${difficulty}.`,
+          studentIds,
+          studentEmails,
+          folderId: null,
+          dueDate: null,
+          assignedDate: new Date(),
+          questions,
+          timeLimitEnabled: false,
+          timeLimit: 0,
+          completed: false,
+        }
+
+        const assignmentsRef = collection(db, 'assignments')
+        const newDocRef = doc(assignmentsRef)
+        await setDoc(newDocRef, practiceAssignment as any)
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Practice assignments created for all students.',
+      })
+
+      await loadData()
+    } catch (error) {
+      console.error('Error creating practice assignments:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to create practice assignments.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsCreatingPracticeAssignments(false)
     }
   }
 
@@ -934,6 +997,14 @@ export default function AssignmentManagement() {
           >
             <Folder className="w-4 h-4 mr-2" />
             New Folder
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleCreatePracticeAssignments}
+            disabled={isCreatingPracticeAssignments}
+          >
+            <BookOpen className="w-4 h-4 mr-2" />
+            {isCreatingPracticeAssignments ? 'Creating...' : 'Seed Practice Assignments'}
           </Button>
           <Button onClick={handleNewAssignment} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />

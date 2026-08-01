@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth'
+import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, User } from 'firebase/auth'
 import { auth, db } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,38 @@ export default function SignIn() {
       setLoading(false)
       return
     }
+
+    const handleRedirectSignIn = async () => {
+      if (!auth) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        const result = await getRedirectResult(auth)
+        if (result?.user) {
+          setUser(result.user)
+          if (result.user.email === ADMIN_EMAIL) {
+            router.push('/admin')
+            return
+          }
+
+          if (db) {
+            const studentDoc = await getDoc(doc(db, 'students', result.user.uid))
+            if (!studentDoc.exists()) {
+              setShowOnboarding(true)
+            } else {
+              setShowOnboarding(false)
+              router.push('/student-dashboard')
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error handling redirect sign-in:', error)
+      }
+    }
+
+    void handleRedirectSignIn()
     
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setUser(user)
@@ -74,38 +106,48 @@ export default function SignIn() {
       })
       return
     }
-    
+
     try {
       const provider = new GoogleAuthProvider()
-      const result = await signInWithPopup(auth, provider)
-      
-      if (result.user.email === ADMIN_EMAIL) {
-        router.push('/admin')
-        return
-      }
-      
-      // Check if student has completed onboarding
-      if (db) {
-        try {
-          const studentDoc = await getDoc(doc(db, 'students', result.user.uid))
-          if (!studentDoc.exists()) {
-            // Student needs to complete onboarding
-            setShowOnboarding(true)
-          } else {
-            // Student exists, redirect to dashboard
-            setShowOnboarding(false)
-            router.push('/student-dashboard')
-          }
-        } catch (error) {
-          console.error('Error checking student data:', error)
-          // Only show onboarding if student doesn't exist
-          const studentDoc = await getDoc(doc(db, 'students', result.user.uid))
-          if (!studentDoc.exists()) {
-            setShowOnboarding(true)
-          } else {
-            router.push('/student-dashboard')
+
+      try {
+        const result = await signInWithPopup(auth, provider)
+
+        if (result.user.email === ADMIN_EMAIL) {
+          router.push('/admin')
+          return
+        }
+
+        if (db) {
+          try {
+            const studentDoc = await getDoc(doc(db, 'students', result.user.uid))
+            if (!studentDoc.exists()) {
+              setShowOnboarding(true)
+            } else {
+              setShowOnboarding(false)
+              router.push('/student-dashboard')
+            }
+          } catch (error) {
+            console.error('Error checking student data:', error)
+            const studentDoc = await getDoc(doc(db, 'students', result.user.uid))
+            if (!studentDoc.exists()) {
+              setShowOnboarding(true)
+            } else {
+              router.push('/student-dashboard')
+            }
           }
         }
+      } catch (error: any) {
+        if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/popup-closed-by-user') {
+          toast({
+            title: 'Popup blocked',
+            description: 'Your browser blocked the sign-in popup. Redirecting to Google instead...',
+          })
+          await signInWithRedirect(auth, provider)
+          return
+        }
+
+        throw error
       }
     } catch (error) {
       console.error('Error signing in:', error)

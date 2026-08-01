@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth'
+import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, User } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,27 @@ export default function AdminSignIn() {
       setLoading(false)
       return
     }
+
+    const handleRedirectSignIn = async () => {
+      if (!auth) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        const result = await getRedirectResult(auth)
+        if (result?.user) {
+          setUser(result.user)
+          if (result.user.email === ADMIN_EMAIL) {
+            router.push('/admin')
+          }
+        }
+      } catch (error) {
+        console.error('Error handling redirect sign-in:', error)
+      }
+    }
+
+    void handleRedirectSignIn()
     
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setUser(user)
@@ -46,17 +67,30 @@ export default function AdminSignIn() {
     
     try {
       const provider = new GoogleAuthProvider()
-      const result = await signInWithPopup(auth, provider)
-      
-      if (result.user.email === ADMIN_EMAIL) {
-        router.push('/admin')
-      } else {
-        toast({
-          title: 'Access Denied',
-          description: 'Only authorized administrators can access the admin panel.',
-          variant: 'destructive',
-        })
-        await auth.signOut()
+      try {
+        const result = await signInWithPopup(auth, provider)
+        
+        if (result.user.email === ADMIN_EMAIL) {
+          router.push('/admin')
+        } else {
+          toast({
+            title: 'Access Denied',
+            description: 'Only authorized administrators can access the admin panel.',
+            variant: 'destructive',
+          })
+          await auth.signOut()
+        }
+      } catch (error: any) {
+        if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/popup-closed-by-user') {
+          toast({
+            title: 'Popup blocked',
+            description: 'Your browser blocked the sign-in popup. Redirecting to Google instead...',
+          })
+          await signInWithRedirect(auth, provider)
+          return
+        }
+
+        throw error
       }
     } catch (error) {
       console.error('Error signing in:', error)
