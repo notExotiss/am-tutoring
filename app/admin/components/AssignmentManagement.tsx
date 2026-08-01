@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Trash2, CalendarIcon, BookOpen, Folder, X, Edit, Save, ChevronLeft, ChevronRight, Users, Eye } from 'lucide-react'
+import { Plus, Trash2, CalendarIcon, Folder, X, Edit, Save, ChevronLeft, ChevronRight, Users, Eye } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -198,7 +198,6 @@ export default function AssignmentManagement() {
   const [viewingSubmissions, setViewingSubmissions] = useState<Assignment | null>(null)
   const [submissions, setSubmissions] = useState<any[]>([])
   const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null)
-  const [isCreatingPracticeAssignments, setIsCreatingPracticeAssignments] = useState(false)
   const { toast } = useToast()
 
   const sensors = useSensors(
@@ -243,6 +242,7 @@ export default function AssignmentManagement() {
       })
       setFolders(foldersList)
 
+      await ensurePracticeAssignments(studentsList)
       await loadAssignments(studentsList, foldersList)
     } catch (error) {
       console.error('Error loading data:', error)
@@ -251,6 +251,52 @@ export default function AssignmentManagement() {
         description: 'Failed to load data.',
         variant: 'destructive',
       })
+    }
+  }
+
+  const ensurePracticeAssignments = async (studentsList: Student[]) => {
+    if (!db || studentsList.length === 0) return
+
+    const assignmentsRef = collection(db, 'assignments')
+    const snapshot = await getDocs(assignmentsRef)
+    const existingTitles = new Set(snapshot.docs.map((assignmentDoc) => assignmentDoc.data().title))
+    const questionBank = practiceQuestionsByDifficulty as Record<string, PracticeQuestion[]>
+    const difficultyOrder = ['easy', 'medium', 'hard'] as const
+
+    for (const difficulty of difficultyOrder) {
+      const title = `SAT Reading & Writing Practice - ${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1)}`
+      if (existingTitles.has(title)) continue
+
+      const questions = (questionBank[difficulty] || []).slice(0, 6).map((question, index) => ({
+        id: `${difficulty}-${index}-${question.id}`,
+        questionText: question.questionText,
+        questionImage: undefined,
+        readingPassage: undefined,
+        options: question.options,
+        correctAnswer: question.correctAnswer,
+        section: question.section,
+        questionType: question.questionType,
+      }))
+
+      const studentIds = studentsList.map((student) => student.id)
+      const studentEmails = studentsList
+        .map((student) => student.email)
+        .filter((email): email is string => Boolean(email))
+
+      const newDocRef = doc(assignmentsRef)
+      await setDoc(newDocRef, {
+        title,
+        description: `Difficulty-based practice assignment for ${difficulty}.`,
+        studentIds,
+        studentEmails,
+        folderId: null,
+        dueDate: null,
+        assignedDate: new Date(),
+        questions,
+        timeLimitEnabled: false,
+        timeLimit: 0,
+        completed: false,
+      } as any)
     }
   }
 
@@ -415,67 +461,6 @@ export default function AssignmentManagement() {
         description: 'Failed to save assignment.',
         variant: 'destructive',
       })
-    }
-  }
-
-  const handleCreatePracticeAssignments = async () => {
-    if (!db || students.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'At least one student must exist before seeding practice assignments.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    setIsCreatingPracticeAssignments(true)
-
-    try {
-      const studentIds = students.map((student) => student.id)
-      const studentEmails = students.map((student) => student.email).filter(Boolean)
-      const practiceQuestionBank = practiceQuestionsByDifficulty as Record<string, PracticeQuestion[]>
-      const difficultyOrder = ['easy', 'medium', 'hard'] as const
-
-      for (const difficulty of difficultyOrder) {
-        const questions: PracticeQuestion[] = (practiceQuestionBank[difficulty] || []).map((question, index) => ({
-          ...question,
-          id: `${difficulty}-${index}-${question.id}`,
-        }))
-
-        const practiceAssignment = {
-          title: `SAT Reading & Writing Practice - ${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1)}`,
-          description: `Difficulty-based practice assignment for ${difficulty}.`,
-          studentIds,
-          studentEmails,
-          folderId: null,
-          dueDate: null,
-          assignedDate: new Date(),
-          questions,
-          timeLimitEnabled: false,
-          timeLimit: 0,
-          completed: false,
-        }
-
-        const assignmentsRef = collection(db, 'assignments')
-        const newDocRef = doc(assignmentsRef)
-        await setDoc(newDocRef, practiceAssignment as any)
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Practice assignments created for all students.',
-      })
-
-      await loadData()
-    } catch (error) {
-      console.error('Error creating practice assignments:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to create practice assignments.',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsCreatingPracticeAssignments(false)
     }
   }
 
@@ -998,14 +983,6 @@ export default function AssignmentManagement() {
             <Folder className="w-4 h-4 mr-2" />
             New Folder
           </Button>
-          <Button
-            variant="outline"
-            onClick={handleCreatePracticeAssignments}
-            disabled={isCreatingPracticeAssignments}
-          >
-            <BookOpen className="w-4 h-4 mr-2" />
-            {isCreatingPracticeAssignments ? 'Creating...' : 'Seed Practice Assignments'}
-          </Button>
           <Button onClick={handleNewAssignment} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />
             New Assignment
@@ -1354,7 +1331,6 @@ export default function AssignmentManagement() {
           {/* Empty State */}
           {assignments.length === 0 && (
             <Card className="p-12 text-center">
-              <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-400" />
               <h3 className="text-xl font-semibold mb-2">No assignments yet</h3>
               <p className="text-gray-600 mb-6">Create your first assignment to get started</p>
               <Button onClick={handleNewAssignment} className="bg-blue-600 hover:bg-blue-700">
