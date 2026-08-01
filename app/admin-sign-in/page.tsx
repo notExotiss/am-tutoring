@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, User } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { auth, initializeFirebase } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,6 +18,8 @@ export default function AdminSignIn() {
   const { toast } = useToast()
 
   useEffect(() => {
+    initializeFirebase()
+
     if (!auth) {
       setLoading(false)
       return
@@ -66,6 +68,8 @@ export default function AdminSignIn() {
   }, [router])
 
   const handleAdminSignIn = async () => {
+    initializeFirebase()
+
     if (!auth) {
       toast({
         title: 'Configuration Error',

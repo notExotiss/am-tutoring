@@ -11,24 +11,48 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
-// Initialize Firebase
 let app: FirebaseApp | undefined
 let auth: Auth | undefined
 let db: Firestore | undefined
 
-if (typeof window !== 'undefined') {
+export function initializeFirebase() {
+  if (typeof window === 'undefined') {
+    return { app, auth, db }
+  }
+
   try {
-    if (firebaseConfig.apiKey && firebaseConfig.projectId) {
-      app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
-      auth = getAuth(app)
-      db = getFirestore(app)
-    } else {
+    const hasRequiredConfig = Boolean(
+      firebaseConfig.apiKey &&
+      firebaseConfig.authDomain &&
+      firebaseConfig.projectId &&
+      firebaseConfig.appId,
+    )
+
+    if (!hasRequiredConfig) {
       console.warn('Firebase configuration is missing. Please set up environment variables.')
+      return { app, auth, db }
     }
+
+    if (!app) {
+      app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
+    }
+
+    if (!auth) {
+      auth = getAuth(app)
+    }
+
+    if (!db) {
+      db = getFirestore(app)
+    }
+
+    return { app, auth, db }
   } catch (error) {
     console.error('Error initializing Firebase:', error)
+    return { app, auth, db }
   }
 }
 
-export { auth, db }
+initializeFirebase()
+
+export { app, auth, db }
 

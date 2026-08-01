@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { User, onAuthStateChanged, signOut } from 'firebase/auth'
 import { collection, doc, getDoc, getDocs, query, where, orderBy } from 'firebase/firestore'
-import { auth, db } from '@/lib/firebase'
+import { auth, db, initializeFirebase } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -86,6 +86,8 @@ export default function StudentDashboard() {
   const { toast } = useToast()
 
   useEffect(() => {
+    initializeFirebase()
+
     if (!auth) {
       setLoading(false)
       router.push('/sign-in')

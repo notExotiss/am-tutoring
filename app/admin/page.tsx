@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { User, onAuthStateChanged, signOut } from 'firebase/auth'
 import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, where } from 'firebase/firestore'
-import { auth, db } from '@/lib/firebase'
+import { auth, db, initializeFirebase } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,6 +36,8 @@ export default function AdminPanel() {
   const { toast } = useToast()
 
   useEffect(() => {
+    initializeFirebase()
+
     if (!auth) {
       setLoading(false)
       router.push('/sign-in')
