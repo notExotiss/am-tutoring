@@ -23,6 +23,8 @@ export default function AdminSignIn() {
       return
     }
 
+    let redirectResultHandled = false
+
     const handleRedirectSignIn = async () => {
       if (!auth) {
         setLoading(false)
@@ -31,6 +33,8 @@ export default function AdminSignIn() {
 
       try {
         const result = await getRedirectResult(auth)
+        redirectResultHandled = true
+
         if (result?.user) {
           setUser(result.user)
           if (result.user.email === ADMIN_EMAIL) {
@@ -39,16 +43,23 @@ export default function AdminSignIn() {
         }
       } catch (error) {
         console.error('Error handling redirect sign-in:', error)
+      } finally {
+        redirectResultHandled = true
+        setLoading(false)
       }
     }
 
     void handleRedirectSignIn()
-    
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUser(user)
-      setLoading(false)
-      if (user && user.email === ADMIN_EMAIL) {
+
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      setUser(currentUser)
+
+      if (currentUser && currentUser.email === ADMIN_EMAIL) {
         router.push('/admin')
+      }
+
+      if (redirectResultHandled) {
+        setLoading(false)
       }
     })
 

@@ -25,6 +25,8 @@ export default function SignIn() {
       return
     }
 
+    let redirectResultHandled = false
+
     const handleRedirectSignIn = async () => {
       if (!auth) {
         setLoading(false)
@@ -33,6 +35,8 @@ export default function SignIn() {
 
       try {
         const result = await getRedirectResult(auth)
+        redirectResultHandled = true
+
         if (result?.user) {
           setUser(result.user)
           if (result.user.email === ADMIN_EMAIL) {
@@ -52,35 +56,35 @@ export default function SignIn() {
         }
       } catch (error) {
         console.error('Error handling redirect sign-in:', error)
+      } finally {
+        redirectResultHandled = true
+        setLoading(false)
       }
     }
 
     void handleRedirectSignIn()
-    
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      setUser(user)
-      setLoading(false)
-      if (user) {
-        if (user.email === ADMIN_EMAIL) {
+
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+      setUser(currentUser)
+
+      if (currentUser) {
+        if (currentUser.email === ADMIN_EMAIL) {
           router.push('/admin')
           return
         }
-        // Check if student has completed onboarding
+
         if (db) {
           try {
-            const studentDoc = await getDoc(doc(db, 'students', user.uid))
+            const studentDoc = await getDoc(doc(db, 'students', currentUser.uid))
             if (!studentDoc.exists()) {
-              // Student needs to complete onboarding
               setShowOnboarding(true)
             } else {
-              // Student exists, redirect to dashboard
               setShowOnboarding(false)
               router.push('/student-dashboard')
             }
           } catch (error) {
             console.error('Error checking student data:', error)
-            // Only show onboarding if there's a real error, not if student exists
-            const studentDoc = await getDoc(doc(db, 'students', user.uid))
+            const studentDoc = await getDoc(doc(db, 'students', currentUser.uid))
             if (!studentDoc.exists()) {
               setShowOnboarding(true)
             } else {
@@ -89,8 +93,11 @@ export default function SignIn() {
           }
         }
       } else {
-        // User signed out, reset onboarding state
         setShowOnboarding(false)
+
+        if (redirectResultHandled) {
+          setLoading(false)
+        }
       }
     })
 
