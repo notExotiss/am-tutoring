@@ -25,7 +25,7 @@ export default function SignIn() {
       return
     }
 
-    let redirectResultHandled = false
+    let redirectCheckComplete = false
 
     const handleRedirectSignIn = async () => {
       if (!auth) {
@@ -35,7 +35,6 @@ export default function SignIn() {
 
       try {
         const result = await getRedirectResult(auth)
-        redirectResultHandled = true
 
         if (result?.user) {
           setUser(result.user)
@@ -57,7 +56,7 @@ export default function SignIn() {
       } catch (error) {
         console.error('Error handling redirect sign-in:', error)
       } finally {
-        redirectResultHandled = true
+        redirectCheckComplete = true
         setLoading(false)
       }
     }
@@ -65,6 +64,10 @@ export default function SignIn() {
     void handleRedirectSignIn()
 
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+      if (!redirectCheckComplete) {
+        return
+      }
+
       setUser(currentUser)
 
       if (currentUser) {
@@ -94,10 +97,6 @@ export default function SignIn() {
         }
       } else {
         setShowOnboarding(false)
-
-        if (redirectResultHandled) {
-          setLoading(false)
-        }
       }
     })
 
