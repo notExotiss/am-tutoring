@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast'
 import { 
   Pause, Play, ArrowLeft, ArrowRight, CheckCircle2, X, 
   ChevronDown, ChevronUp, Bookmark, BookmarkCheck, Highlighter,
-  Calculator, FileText, MoreVertical, GripVertical
+  Calculator, FileText, MoreVertical, GripVertical, Save, Settings, Flag
 } from 'lucide-react'
 import { format } from 'date-fns'
 import 'katex/dist/katex.min.css'
@@ -862,124 +862,37 @@ export default function TakeAssignmentPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Top Header */}
-      <header className="px-6 py-3 flex items-center justify-between relative" style={{ backgroundColor: '#eaedfc' }}>
-        <div className="absolute bottom-0 left-0 right-0" style={{ 
-          backgroundImage: 'repeating-linear-gradient(to right, #86858b 0px, #86858b 24px, transparent 24px, transparent 32px)',
-          height: '3px'
-        }}></div>
-        <div className="flex items-center gap-4">
-          <div>
-            <h2 className="text-sm font-semibold leading-tight text-gray-900">
-              {assignment?.title || (isEnglish ? 'Reading and Writing' : 'Math')}
-            </h2>
-            <button
-              onClick={() => setShowDirections(!showDirections)}
-              className="text-xs text-gray-600 hover:text-gray-800 flex items-center gap-1 mt-0.5"
-            >
-              Directions {showDirections ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            </button>
+      <header className="relative z-20 flex min-h-[78px] items-center justify-between border-b border-gray-900 bg-white px-8 py-3 font-sans">
+      <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ backgroundImage: 'repeating-linear-gradient(to right, #3151c5 0 24px, transparent 24px 32px, #b17b36 32px 56px, transparent 56px 64px, #3d8f54 64px 80px, transparent 80px 88px)' }} />
+      <div>
+        <h1 className="text-[18px] font-bold leading-tight text-gray-950">
+          {isEnglish ? 'Section 1: Reading and Writing' : 'Section 2: Math'}
+        </h1>
+        <button
+          onClick={() => setShowDirections(!showDirections)}
+          className="mt-1 flex items-center gap-1 text-[13px] text-gray-700 hover:text-black"
+        >
+          Directions {showDirections ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+      <div className="absolute left-1/2 -translate-x-1/2">
+        {assignment.timeLimitEnabled && showTimer && (
+          <div className="text-center">
+            <h1 className="text-[24px] font-bold leading-tight text-gray-950">{formatTime(timeRemaining)}</h1>
+            <button onClick={() => setShowTimer(false)} className="mt-0.5 rounded border border-gray-400 px-2 text-[12px] text-gray-700 hover:bg-gray-50">Hide</button>
           </div>
-        </div>
-        
-        <div className="absolute left-1/2 transform -translate-x-1/2">
-          {assignment.timeLimitEnabled && showTimer && (
-            <div className="text-center">
-              <h1 className="text-2xl font-bold leading-tight text-gray-900">{formatTime(timeRemaining)}</h1>
-              <button
-                onClick={() => setShowTimer(false)}
-                className="text-xs text-gray-600 hover:text-gray-800 mt-0.5"
-              >
-                Hide
-              </button>
-            </div>
-          )}
-          {!showTimer && assignment.timeLimitEnabled && (
-            <button
-              onClick={() => setShowTimer(true)}
-              className="text-xs text-gray-600 hover:text-gray-800 px-2 py-1 border border-gray-300 rounded"
-            >
-              Show Timer
-            </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          {isEnglish && (
-            <button
-              onClick={() => setHighlightMode(!highlightMode)}
-              className={`p-2 rounded ${highlightMode ? 'bg-blue-600' : 'hover:bg-blue-800'}`}
-              title="Highlights & Notes"
-            >
-              <Highlighter className="w-5 h-5" />
-            </button>
-          )}
-          
-          {isMath && (
-            <>
-              <button
-                onClick={() => setShowCalculator(!showCalculator)}
-                className={`p-2 rounded ${showCalculator ? 'bg-blue-600' : 'hover:bg-blue-800'}`}
-                title="Calculator"
-              >
-                <Calculator className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setShowReferenceSheet(!showReferenceSheet)}
-                className={`p-2 rounded ${showReferenceSheet ? 'bg-blue-600' : 'hover:bg-blue-800'}`}
-                title="Reference"
-              >
-                <FileText className="w-5 h-5" />
-              </button>
-            </>
-          )}
-          
-          <div className="relative more-menu-container">
-            <button 
-              onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="p-2 rounded hover:bg-blue-800"
-              title="More"
-            >
-              <MoreVertical className="w-5 h-5" />
-            </button>
-            {showMoreMenu && (
-              <div className="absolute right-0 top-full mt-2 bg-white border border-gray-300 rounded-lg shadow-xl z-50 min-w-[200px]">
-                <div className="py-1">
-                  <button
-                    onClick={() => {
-                      setShowHighlightsNotes(!showHighlightsNotes)
-                      setShowMoreMenu(false)
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Highlights & Notes
-                  </button>
-                  <button
-                    onClick={() => {
-                      handlePause()
-                      setShowMoreMenu(false)
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    {isPaused ? 'Resume' : 'Pause'}
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (confirm('Are you sure you want to exit? Your progress will be saved.')) {
-                        await saveProgress()
-                        router.push('/student-dashboard')
-                      }
-                      setShowMoreMenu(false)
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Exit Assignment
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+        )}
+      </div>
+      <div className="flex items-center gap-5 text-gray-950">
+        <button onClick={() => saveProgress()} className="flex flex-col items-center gap-1 text-[11px] hover:text-[#314dcc]" title="Save progress"><Save className="h-[18px] w-[18px]" /><span>Save</span></button>
+        {isMath && <button onClick={() => setShowCalculator(!showCalculator)} className="flex flex-col items-center gap-1 text-[11px] hover:text-[#314dcc]" title="Calculator"><Calculator className="h-[18px] w-[18px]" /><span>Calculator</span></button>}
+        {isMath && <button onClick={() => setShowReferenceSheet(!showReferenceSheet)} className="flex flex-col items-center gap-1 text-[11px] hover:text-[#314dcc]" title="Reference"><FileText className="h-[18px] w-[18px]" /><span>Reference</span></button>}
+        <button onClick={() => setShowMoreMenu(!showMoreMenu)} className="flex flex-col items-center gap-1 text-[11px] hover:text-[#314dcc]" title="Settings"><Settings className="h-[18px] w-[18px]" /><span>Settings</span></button>
+        <button onClick={() => toast({ title: 'Question report', description: 'This question has been flagged for review.' })} className="flex flex-col items-center gap-1 text-[11px] hover:text-[#314dcc]" title="Report"><Flag className="h-[18px] w-[18px]" /><span>Report</span></button>
+        {isEnglish && <button onClick={() => setHighlightMode(!highlightMode)} className={`flex flex-col items-center gap-1 text-[11px] hover:text-[#314dcc] ${highlightMode ? 'text-[#314dcc]' : ''}`} title="Highlights & Notes"><Highlighter className="h-[18px] w-[18px]" /><span>Highlights & Notes</span></button>}
+        <button onClick={() => setShowMoreMenu(!showMoreMenu)} className="flex flex-col items-center gap-1 text-[11px] hover:text-[#314dcc]" title="More"><MoreVertical className="h-[18px] w-[18px]" /><span>More</span></button>
+      </div>
+    </header>
 
       {showDirections && (
         <div className="bg-gray-100 border-b px-6 py-4">
@@ -1122,7 +1035,7 @@ export default function TakeAssignmentPage() {
             </div>
           ) : currentQuestion && (
             <div>
-               <div className="flex items-center gap-4 mb-6 p-4 rounded-lg" style={{ backgroundColor: '#eaedfc' }}>
+               <div className="mb-6 flex items-center gap-4 border-b border-gray-200 bg-white px-1 pb-4">
                  <div className="bg-black text-white w-10 h-10 flex items-center justify-center font-bold text-lg flex-shrink-0">
                    {currentQuestionIndex + 1}
                  </div>
@@ -1190,15 +1103,15 @@ export default function TakeAssignmentPage() {
                )}
 
                {!isOpenEnded && (
-                 <div className={`space-y-2 ${isMath ? 'max-w-[50%] mx-auto' : ''}`}>
+                 <div className="mx-auto max-w-3xl space-y-3">
                    {currentQuestion.options.map((option, index) => {
                      const isCrossedOut = crossedOutOptions[currentQuestion.id]?.has(index)
                      return (
                        <label
                          key={index}
-                          className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors relative ${
+                          className={`relative flex items-center gap-4 rounded-xl border border-[#b7b7b7] bg-white px-5 py-3.5 cursor-pointer transition-colors hover:border-[#314dcc] ${
                             answers[currentQuestion.id] === index
-                              ? 'border-blue-600 bg-blue-50'
+                              ? 'border-[#314dcc] bg-[#eef2ff]'
                               : 'border-gray-200 hover:border-gray-300'
                           } ${isCrossedOut ? 'opacity-50' : ''}`}
                           onClick={(event) => {
@@ -1208,9 +1121,9 @@ export default function TakeAssignmentPage() {
                           }}
                         >
                          <div className="flex items-center gap-3 flex-1">
-                           <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                           <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 ${
                              answers[currentQuestion.id] === index
-                               ? 'border-blue-600 bg-blue-600'
+                               ? 'border-[#314dcc] bg-[#314dcc]'
                                : 'border-gray-400'
                            }`}>
                              {answers[currentQuestion.id] === index && (
