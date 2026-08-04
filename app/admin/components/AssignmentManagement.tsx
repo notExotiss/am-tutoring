@@ -263,6 +263,10 @@ export default function AssignmentManagement() {
     const existingByTitle = new Map(snapshot.docs.map((assignmentDoc) => [assignmentDoc.data().title, assignmentDoc]))
     const questionBank = practiceQuestionsByDifficulty as Record<string, PracticeQuestion[]>
     const difficultyOrder = ['easy', 'medium', 'hard'] as const
+    const studentIds = studentsList.map((student) => student.id)
+    const studentEmails = studentsList
+      .map((student) => student.email)
+      .filter((email): email is string => Boolean(email))
 
     for (const difficulty of difficultyOrder) {
       const title = `SAT Reading & Writing Practice - ${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1)}`
