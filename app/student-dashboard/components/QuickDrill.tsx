@@ -5,8 +5,8 @@ import { collection, doc, setDoc } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
 import { db } from '@/lib/firebase'
 import { useToast } from '@/hooks/use-toast'
-import { practiceQuestionsByDifficulty } from '@/data/practice-questions'
-import { mathPracticeQuestionsByDifficulty } from '@/data/math-practice-questions'
+import { practiceQuestionsByDifficulty, PracticeQuestion } from '@/data/practice-questions'
+import { mathPracticeQuestionsByDifficulty, MathPracticeQuestion } from '@/data/math-practice-questions'
 
 type Subject = 'reading-writing' | 'math'
 type Difficulty = 'all' | 'easy' | 'medium' | 'hard'
@@ -26,7 +26,7 @@ export default function QuickDrill({ studentId, studentEmail }: QuickDrillProps)
   const [questionCount, setQuestionCount] = useState(10)
   const [creating, setCreating] = useState(false)
 
-  const questions = useMemo(() => {
+  const questions = useMemo<Array<PracticeQuestion | MathPracticeQuestion>>(() => {
     const levels: Array<'easy' | 'medium' | 'hard'> = difficulty === 'all'
       ? ['easy', 'medium', 'hard']
       : [difficulty]
