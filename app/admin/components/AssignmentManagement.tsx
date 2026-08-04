@@ -21,6 +21,7 @@ import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, 
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { practiceQuestionsByDifficulty, type PracticeQuestion } from '@/data/practice-questions'
+import { mathPracticeQuestionsByDifficulty } from '@/data/math-practice-questions'
 import TestQuestionEditor from './TestQuestionEditor'
 
 interface AssignmentQuestion {
@@ -282,6 +283,45 @@ export default function AssignmentManagement() {
       const assignmentData = {
         title,
         description: `Difficulty-based practice assignment for ${difficulty}.`,
+        studentIds,
+        studentEmails,
+        folderId: null,
+        dueDate: null,
+        assignedDate: new Date(),
+        questions,
+        timeLimitEnabled: false,
+        timeLimit: 0,
+        completed: false,
+      } as any
+
+      const existingAssignment = existingByTitle.get(title)
+      if (existingAssignment) {
+        await setDoc(existingAssignment.ref, {
+          ...existingAssignment.data(),
+          questions,
+          description: assignmentData.description,
+        })
+      } else {
+        const newDocRef = doc(assignmentsRef)
+        await setDoc(newDocRef, assignmentData)
+      }
+    }
+
+    const mathQuestionBank = mathPracticeQuestionsByDifficulty
+    for (const difficulty of difficultyOrder) {
+      const title = `SAT Math Practice - ${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1)}`
+      const questions = (mathQuestionBank[difficulty] || []).map((question) => ({
+        id: question.id,
+        questionText: question.questionText,
+        options: question.options,
+        correctAnswer: question.correctAnswer,
+        section: question.section,
+        questionType: question.questionType,
+      }))
+
+      const assignmentData = {
+        title,
+        description: `Difficulty-based math practice assignment for ${difficulty}.`,
         studentIds,
         studentEmails,
         folderId: null,
