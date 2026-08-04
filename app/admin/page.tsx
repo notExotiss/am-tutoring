@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 // Import the student management component
 import StudentManagement from './components/StudentManagement'
 import AssignmentManagement from './components/AssignmentManagement'
+import QuestionBank from './components/QuestionBank'
 import TestManagement from './components/TestManagement'
 
 const ADMIN_EMAIL = 'iamaaritmalhotra@gmail.com'
@@ -105,7 +106,7 @@ export default function AdminPanel() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="students" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="students">
               <Users className="w-4 h-4 mr-2" />
               Students
@@ -113,6 +114,10 @@ export default function AdminPanel() {
             <TabsTrigger value="assignments">
               <BookOpen className="w-4 h-4 mr-2" />
               Assignments
+            </TabsTrigger>
+            <TabsTrigger value="question-bank">
+              <BookOpen className="w-4 h-4 mr-2" />
+              Question Bank
             </TabsTrigger>
             <TabsTrigger value="tests">
               <FileText className="w-4 h-4 mr-2" />
@@ -126,6 +131,10 @@ export default function AdminPanel() {
 
           <TabsContent value="assignments">
             <AssignmentManagement />
+          </TabsContent>
+
+          <TabsContent value="question-bank">
+            <QuestionBank />
           </TabsContent>
 
           <TabsContent value="tests">
