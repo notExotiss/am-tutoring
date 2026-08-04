@@ -1066,7 +1066,7 @@ export default function TakeAssignmentPage() {
                 data-question-id={currentQuestion.id}
                 data-highlight-target-key={getQuestionTargetKey(currentQuestion.id)}
                 style={{
-                  fontFamily: 'var(--font-noto-serif), serif',
+                  fontFamily: 'Arial, Helvetica, sans-serif',
                   userSelect: isEnglish && highlightMode ? 'text' : 'auto',
                   cursor: isEnglish && highlightMode ? 'text' : 'default',
                 }}
@@ -1126,9 +1126,7 @@ export default function TakeAssignmentPage() {
                                ? 'border-[#314dcc] bg-[#314dcc]'
                                : 'border-gray-400'
                            }`}>
-                             {answers[currentQuestion.id] === index && (
-                               <div className="w-3 h-3 rounded-full bg-white"></div>
-                             )}
+                             <span className="text-sm font-semibold ${answers[currentQuestion.id] === index ? 'text-white' : 'text-gray-700'}">{String.fromCharCode(65 + index)}</span>
                            </div>
                            <input
                              type="radio"
@@ -1137,7 +1135,6 @@ export default function TakeAssignmentPage() {
                              onChange={() => setAnswers({ ...answers, [currentQuestion.id]: index })}
                              className="sr-only"
                            />
-                          <span className="font-semibold w-8 text-lg flex-shrink-0">{String.fromCharCode(65 + index)}</span>
                           <span 
                             className={`flex-1 ${isCrossedOut ? 'line-through' : ''}`}
                             data-question-id={currentQuestion.id}
