@@ -268,8 +268,6 @@ export default function AssignmentManagement() {
       const questions = (questionBank[difficulty] || []).map((question, index) => ({
         id: question.id || `${difficulty}-${index}`,
         questionText: question.questionText,
-        questionImage: undefined,
-        readingPassage: undefined,
         options: question.options,
         correctAnswer: question.correctAnswer,
         section: question.section,
