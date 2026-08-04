@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
+import QuickDrill from './components/QuickDrill'
 import { 
   BarChart3, 
   BookOpen, 
@@ -510,6 +511,10 @@ export default function StudentDashboard() {
             </Button>
           </div>
         </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <QuickDrill studentId={user?.uid || studentData.id} studentEmail={studentData.email || user?.email || ''} />
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
