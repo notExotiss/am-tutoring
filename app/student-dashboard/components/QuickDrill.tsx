@@ -27,11 +27,13 @@ export default function QuickDrill({ studentId, studentEmail }: QuickDrillProps)
   const [creating, setCreating] = useState(false)
 
   const questions = useMemo(() => {
-    const source = subject === 'math' ? mathPracticeQuestionsByDifficulty : practiceQuestionsByDifficulty
     const levels: Array<'easy' | 'medium' | 'hard'> = difficulty === 'all'
       ? ['easy', 'medium', 'hard']
       : [difficulty]
-    return levels.flatMap((level) => source[level] || [])
+    if (subject === 'math') {
+      return levels.flatMap((level) => mathPracticeQuestionsByDifficulty[level] || [])
+    }
+    return levels.flatMap((level) => practiceQuestionsByDifficulty[level] || [])
   }, [subject, difficulty])
 
   const createDrill = async () => {
