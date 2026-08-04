@@ -259,16 +259,14 @@ export default function AssignmentManagement() {
 
     const assignmentsRef = collection(db, 'assignments')
     const snapshot = await getDocs(assignmentsRef)
-    const existingTitles = new Set(snapshot.docs.map((assignmentDoc) => assignmentDoc.data().title))
+    const existingByTitle = new Map(snapshot.docs.map((assignmentDoc) => [assignmentDoc.data().title, assignmentDoc]))
     const questionBank = practiceQuestionsByDifficulty as Record<string, PracticeQuestion[]>
     const difficultyOrder = ['easy', 'medium', 'hard'] as const
 
     for (const difficulty of difficultyOrder) {
       const title = `SAT Reading & Writing Practice - ${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1)}`
-      if (existingTitles.has(title)) continue
-
-      const questions = (questionBank[difficulty] || []).slice(0, 6).map((question, index) => ({
-        id: `${difficulty}-${index}-${question.id}`,
+      const questions = (questionBank[difficulty] || []).map((question, index) => ({
+        id: question.id || `${difficulty}-${index}`,
         questionText: question.questionText,
         questionImage: undefined,
         readingPassage: undefined,
@@ -283,8 +281,7 @@ export default function AssignmentManagement() {
         .map((student) => student.email)
         .filter((email): email is string => Boolean(email))
 
-      const newDocRef = doc(assignmentsRef)
-      await setDoc(newDocRef, {
+      const assignmentData = {
         title,
         description: `Difficulty-based practice assignment for ${difficulty}.`,
         studentIds,
@@ -296,7 +293,19 @@ export default function AssignmentManagement() {
         timeLimitEnabled: false,
         timeLimit: 0,
         completed: false,
-      } as any)
+      } as any
+
+      const existingAssignment = existingByTitle.get(title)
+      if (existingAssignment) {
+        await setDoc(existingAssignment.ref, {
+          ...existingAssignment.data(),
+          questions,
+          description: assignmentData.description,
+        })
+      } else {
+        const newDocRef = doc(assignmentsRef)
+        await setDoc(newDocRef, assignmentData)
+      }
     }
   }
 
@@ -1353,3 +1362,4 @@ export default function AssignmentManagement() {
     </div>
   )
 }
+
