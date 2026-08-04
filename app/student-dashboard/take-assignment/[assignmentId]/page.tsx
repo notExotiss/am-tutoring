@@ -357,12 +357,12 @@ export default function TakeAssignmentPage() {
           // Compare student answer with correct answer (normalize for comparison)
           const studentAnswer = openEndedAnswers[question.id]?.trim() || ''
           const correctAnswer = String(question.correctAnswer || '').trim()
+          const acceptedAnswers = correctAnswer.split('|').map(answer => answer.trim()).filter(Boolean)
           let isCorrect = false
-          if (studentAnswer && correctAnswer) {
-            // Normalize answers for comparison (handle fractions, decimals, etc.)
+          if (studentAnswer && acceptedAnswers.length > 0) {
+            // Normalize answers for comparison (handle equivalent fractions/decimals).
             const normalizedStudent = studentAnswer.replace(/\s+/g, '')
-            const normalizedCorrect = correctAnswer.replace(/\s+/g, '')
-            if (normalizedStudent === normalizedCorrect) {
+            if (acceptedAnswers.some(answer => normalizedStudent === answer.replace(/\s+/g, ''))) {
               isCorrect = true
               correct++
             }
